@@ -18,9 +18,7 @@
   "type": "FeatureCollection",
   "features": [
 
-    // ═══════════════════════════════════════════
-    // 文化場館（culture）
-    // ═══════════════════════════════════════════
+   
 
     {
       "type": "Feature",
@@ -144,9 +142,7 @@
       "geometry": { "type": "Point", "coordinates": [120.4297215, 23.49000236] }
     },
 
-    // ═══════════════════════════════════════════
-    // 便利商店 — 7-ELEVEN 東區
-    // ═══════════════════════════════════════════
+
 
     { "type": "Feature", "properties": { "name": "7-11 元福",    "address": "嘉義市東區王田里林森東路288號",                                    "hours": "06:00 ~ 23:59",             "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.46362,    23.488723]  } },
     { "type": "Feature", "properties": { "name": "7-11 台林",    "address": "嘉義市東區新生路723號",                                             "hours": "24H",                        "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.45485,    23.495612]  } },
@@ -179,9 +175,7 @@
     { "type": "Feature", "properties": { "name": "7-11 蘭潭",    "address": "嘉義市東區大雅路二段573號575號",                                    "hours": "24H",                        "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.467898,   23.477323]  } },
     { "type": "Feature", "properties": { "name": "7-11 體育場",  "address": "嘉義市東區體育路29號",                                              "hours": "24H",                        "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.460835,   23.471843]  } },
 
-    // ═══════════════════════════════════════════
-    // 便利商店 — 7-ELEVEN 西區
-    // ═══════════════════════════════════════════
+ 
 
     { "type": "Feature", "properties": { "name": "7-11 八大",    "address": "嘉義市西區保福里八德路237號",                                       "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.430123,   23.488714]  } },
     { "type": "Feature", "properties": { "name": "7-11 大統",    "address": "嘉義市西區西平里博愛路二段696號1樓",                                "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.428353,   23.468865]  } },
@@ -227,9 +221,7 @@
     { "type": "Feature", "properties": { "name": "7-11 嘉賓",    "address": "嘉義市西區新西里垂楊路611號",                                       "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.437858,   23.472573]  } },
     { "type": "Feature", "properties": { "name": "7-11 嘉德",    "address": "嘉義市西區八德路73號",                                              "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.430691,   23.483731]  } },
 
-    // ═══════════════════════════════════════════
-    // 便利商店 — 全家 東區
-    // ═══════════════════════════════════════════
+   
 
     { "type": "Feature", "properties": { "name": "全家嘉義聖馬店",   "address": "嘉義市東區大雅路二段565號二樓商店街",                 "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.467098,          23.475644]         } },
     { "type": "Feature", "properties": { "name": "全家嘉義藍潭店",   "address": "嘉義市東區大雅路二段557號",                          "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.469654,          23.477494]         } },
@@ -249,9 +241,7 @@
     { "type": "Feature", "properties": { "name": "全家嘉義日新店",   "address": "嘉義市東區彌陀路238巷69號",                         "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.46492,           23.47432]          } },
     { "type": "Feature", "properties": { "name": "全家嘉義體育館店", "address": "嘉義市東區新開里體育路73號",                         "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.46151,           23.473683]         } },
 
-    // ═══════════════════════════════════════════
-    // 便利商店 — 全家 西區
-    // ═══════════════════════════════════════════
+    
 
     { "type": "Feature", "properties": { "name": "全家嘉義鑫德店",   "address": "嘉義市西區八德路287號",                              "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.429939,          23.490663]         } },
     { "type": "Feature", "properties": { "name": "全家嘉義上新店",   "address": "嘉義市西區上海路322號全部",                          "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.438345,          23.4705]           } },
