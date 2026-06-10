@@ -25,7 +25,6 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 
@@ -106,26 +105,19 @@
         .chip.active { background: var(--sky-dark); color: white; box-shadow: 0 4px 14px rgba(3,105,161,0.35); }
         .chip .chip-icon { font-size: 15px; }
 
-        /* ── CLUSTER 樣式覆寫 ── */
-        .marker-cluster-small,
-        .marker-cluster-medium,
-        .marker-cluster-large {
-            background-color: rgba(3, 105, 161, 0.18) !important;
+        /* ── CUSTOM CLUSTER ── */
+        .ccluster-outer {
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
         }
-        .marker-cluster-small div,
-        .marker-cluster-medium div,
-        .marker-cluster-large div {
-            background-color: rgba(3, 105, 161, 0.82) !important;
-            color: white !important;
-            font-family: 'Noto Sans TC', sans-serif !important;
-            font-weight: 700 !important;
-            font-size: 14px !important;
+        .ccluster-inner {
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Noto Sans TC', "Microsoft JhengHei", sans-serif;
+            font-weight: 700;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
         }
-        /* 各分類獨立顏色 */
-        .cluster-cool .marker-cluster div       { background-color: rgba(16, 185, 129, 0.85) !important; }
-        .cluster-cool                            { background-color: rgba(16, 185, 129, 0.2)  !important; }
-        .cluster-convenience .marker-cluster div { background-color: rgba(249, 115, 22, 0.85) !important; }
-        .cluster-convenience                     { background-color: rgba(249, 115, 22, 0.2)  !important; }
 
         /* ── DRAWER ── */
         #drawer {
@@ -332,9 +324,9 @@
    ★ STEP A：新增分類時在此加一行
    ══════════════════════════════════════════════ */
 const CATEGORY_CONFIG = {
-    culture:     { markerClass: 'culture',     drawerTagClass: 'culture',     drawerTagLabel: '🏛️ 文化場館', clusterClass: 'cluster-culture'     },
-    cool:        { markerClass: 'cool',        drawerTagClass: 'cool',        drawerTagLabel: '❄️ 涼適場所', clusterClass: 'cluster-cool'        },
-    convenience: { markerClass: 'convenience', drawerTagClass: 'convenience', drawerTagLabel: '🏪 便利商店', clusterClass: 'cluster-convenience' },
+    culture:     { markerClass: 'culture',     drawerTagClass: 'culture',     drawerTagLabel: '🏛️ 文化場館', clusterClass: 'cluster-culture',     color: '#0369A1' },
+    cool:        { markerClass: 'cool',        drawerTagClass: 'cool',        drawerTagLabel: '❄️ 涼適場所', clusterClass: 'cluster-cool',        color: '#10B981' },
+    convenience: { markerClass: 'convenience', drawerTagClass: 'convenience', drawerTagLabel: '🏪 便利商店', clusterClass: 'cluster-convenience', color: '#F97316' },
 };
 
 const MAP_CENTER  = [23.4800, 120.4500];
@@ -426,21 +418,31 @@ function drawMarkers() {
         );
     }
 
-    // 依分類決定 cluster 顏色 class（全部模式不加特殊 class）
-    const clusterClass = (currentCat !== 'all' && CATEGORY_CONFIG[currentCat])
-        ? CATEGORY_CONFIG[currentCat].clusterClass
-        : '';
+    // 「全部」模式混色用藍色；單一分類用該分類顏色
+    const clusterColor = (currentCat !== 'all' && CATEGORY_CONFIG[currentCat])
+        ? CATEGORY_CONFIG[currentCat].color
+        : '#0369A1';
 
     clusterGroup = L.markerClusterGroup({
         maxClusterRadius: 60,
         showCoverageOnHover: false,
         iconCreateFunction: function(cluster) {
             const count = cluster.getChildCount();
-            const size  = count < 10 ? 40 : count < 50 ? 50 : 60;
+            // 數量越多圓圈越大
+            const outerSize = count < 10 ? 44 : count < 50 ? 54 : 64;
+            const innerSize = outerSize - 10;
+            const fontSize  = count < 100 ? 14 : 12;
+            // 外圈半透明、內圈實色
+            const outerBg = clusterColor + '33';   // 20% opacity hex
             return L.divIcon({
-                html: `<div class="marker-cluster ${clusterClass}"><div><span>${count}</span></div></div>`,
                 className: '',
-                iconSize: L.point(size, size)
+                html: `<div class="ccluster-outer" style="width:${outerSize}px;height:${outerSize}px;background:${outerBg};">
+                           <div class="ccluster-inner" style="width:${innerSize}px;height:${innerSize}px;background:${clusterColor};font-size:${fontSize}px;">
+                               ${count}
+                           </div>
+                       </div>`,
+                iconSize:   L.point(outerSize, outerSize),
+                iconAnchor: L.point(outerSize / 2, outerSize / 2)
             });
         }
     });
