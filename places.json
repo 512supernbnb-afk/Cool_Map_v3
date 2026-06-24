@@ -10,6 +10,7 @@
     "icon 建議": {
       "culture":     "📖 📚 🏛️ 🎨 🌲 🏠 📜",
       "cool":        "❄️",
+      "department":        "🏢",
       "convenience": "🏪"
     },
     "coordinates 格式": "[經度, 緯度]  ← 注意：先經度、再緯度（GeoJSON 標準）",
@@ -265,7 +266,12 @@
     { "type": "Feature", "properties": { "name": "全家嘉義向榮店",   "address": "嘉義市西區國華街519號1樓",                           "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.446463,          23.488537]         } },
     { "type": "Feature", "properties": { "name": "全家嘉義新榮店",   "address": "嘉義市西區新榮路337號之2　1樓",                      "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.444006,          23.479815]         } },
     { "type": "Feature", "properties": { "name": "全家嘉義興雅店",   "address": "嘉義市西區興雅路72號",                               "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.434033,          23.483074]         } },
-    { "type": "Feature", "properties": { "name": "全家嘉義龍興店",   "address": "嘉義市西區興達路166號附1",                           "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.441008,          23.489054]         } }
+    { "type": "Feature", "properties": { "name": "全家嘉義龍興店",   "address": "嘉義市西區興達路166號附1",                           "hours": "24H", "cat": "convenience", "icon": "🏪" }, "geometry": { "type": "Point", "coordinates": [120.441008,          23.489054]         } },
+
+    { "type": "Feature", "properties": { "name": "耐斯廣場購物中心", "address": "嘉義市東區義教里忠孝路600號",                         "hours": "11:00–22:00", "cat": "department", "icon": "🏢" }, "geometry": { "type": "Point", "coordinates": [120.452583,          23.496588]         } },
+    { "type": "Feature", "properties": { "name": "遠東百貨嘉義店", "address": "嘉義市西區垂楊里垂楊路537號",                          "hours": "11:00–21:30", "cat": "department", "icon": "🏢" }, "geometry": { "type": "Point", "coordinates": [120.441163,          23.472725]         } },
+    { "type": "Feature", "properties": { "name": "新光三越嘉義垂楊店", "address": "嘉義市西區永和里垂楊路726號",                          "hours": "11:00–22:00", "cat": "department", "icon": "🏢" }, "geometry": { "type": "Point", "coordinates": [120.441163,      23.472725]         } },
+    { "type": "Feature", "properties": { "name": "秀泰生活嘉義店", "address": "嘉義市西區湖邊里文化路299號",                          "hours": "11:00–22:00", "cat": "department", "icon": "🏢" }, "geometry": { "type": "Point", "coordinates": [120.447832,          23.485427]         } }
 
   ]
 }
