@@ -274,6 +274,7 @@
     <button class="chip"        data-cat="culture"     onclick="filterCat(this,'culture')">    <span class="chip-icon">🏛️</span> 文化場館  </button>
     <button class="chip"        data-cat="cool"        onclick="filterCat(this,'cool')">       <span class="chip-icon">❄️</span> 涼適場所  </button>
     <button class="chip"        data-cat="convenience" onclick="filterCat(this,'convenience')"><span class="chip-icon">🏪</span> 便利商店  </button>
+    <button class="chip"        data-cat="department"   onclick="filterCat(this,'department')"><span class="chip-icon">🏢</span> 百貨公司  </button>
 </div>
 
 <div id="gps-bar">📡 正在定位中...</div>
@@ -306,6 +307,7 @@
         <div class="menu-legend-item"><div class="legend-dot culture">🏛️</div><span>文化場館（圖書館、美術館等）</span></div>
         <div class="menu-legend-item"><div class="legend-dot cool">❄️</div><span>涼適場所（環保局認定）</span></div>
         <div class="menu-legend-item"><div class="legend-dot convenience">🏪</div><span>便利商店（7-ELEVEN / 全家）</span></div>
+        <div class="menu-legend-item"><div class="legend-dot department">🏢</div><span>百貨公司</span></div>
         <div class="menu-legend-item"><div class="legend-dot user">●</div><span>你目前的位置</span></div>
         <div class="menu-section-title">關於</div>
         <div class="menu-partner">
@@ -327,6 +329,7 @@ const CATEGORY_CONFIG = {
     culture:     { markerClass: 'culture',     drawerTagClass: 'culture',     drawerTagLabel: '🏛️ 文化場館', clusterClass: 'cluster-culture',     color: '#0369A1' },
     cool:        { markerClass: 'cool',        drawerTagClass: 'cool',        drawerTagLabel: '❄️ 涼適場所', clusterClass: 'cluster-cool',        color: '#10B981' },
     convenience: { markerClass: 'convenience', drawerTagClass: 'convenience', drawerTagLabel: '🏪 便利商店', clusterClass: 'cluster-convenience', color: '#F97316' },
+    department: { markerClass: 'department', drawerTagClass: 'department', drawerTagLabel: '🏢 百貨公司', clusterClass: 'cluster-department', color: '#d6ae0b' },
 };
 
 const MAP_CENTER  = [23.4800, 120.4500];
