@@ -23,7 +23,6 @@ th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;vertical-align:to
 .actions button{padding:7px 10px}.notice{background:#fff7e6;padding:10px;border-radius:8px;margin-bottom:12px;font-size:12px}
 @media(max-width:850px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
 </style>
-<script src="places_data.js"></script>
 </head>
 <body>
 <header><h1>Cool Map – Location Data Manager</h1><div class="sub">For non-technical staff: manage locations without editing JavaScript or JSON.</div></header>
@@ -64,16 +63,24 @@ th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;vertical-align:to
 const KEY='cool_map_places_v1';
 let baseData=null, fc=null;
 
-function start(){
-  try{
-    baseData=normalize(window.INITIAL_PLACES);
-    const saved=localStorage.getItem(KEY);
-    fc=saved?normalize(JSON.parse(saved)):structuredClone(baseData);
-    saveLocal(); renderTable(); updateStatus(); newRecord();
-  }catch(e){
-    document.getElementById('status').textContent='Load failed: '+e.message;
+  async function start(){
+    try{
+      const response = await fetch('places.json', { cache: 'no-store' });
+      if(!response.ok){
+        throw new Error('Could not load places.json');
+        }
+      const data = await response.json();
+      baseData = normalize(data);
+      const saved = localStorage.getItem(KEY);
+      fc = saved ? normalize(JSON.parse(saved)) : structuredClone(baseData);
+      saveLocal();
+      renderTable();
+      updateStatus();
+      newRecord();
+    }
+    catch(e){
+      document.getElementById('status').textContent='Load failed: '+e.message;}
   }
-}
 function normalize(data){
   if(!data||!Array.isArray(data.features)) throw Error('Invalid GeoJSON');
   data.features.forEach((f,i)=>{f.properties=f.properties||{};if(!f.properties.id)f.properties.id='loc-'+String(i+1).padStart(4,'0');if(!f.properties.status)f.properties.status='active';});
