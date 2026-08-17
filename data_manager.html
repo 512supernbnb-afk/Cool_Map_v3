@@ -63,70 +63,315 @@ th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;vertical-align:to
 const KEY='cool_map_places_v1';
 let baseData=null, fc=null;
 
-  async function start(){
+async function start(){
+  try{
+    // Load the original 128-location GeoJSON directly from places.json
+    const response = await fetch('./places.json', { cache: 'no-store' });
+
+    if(!response.ok){
+      throw new Error('Could not load places.json');
+    }
+
+    const data = await response.json();
+
+    // Validate original data
+    baseData = normalize(data);
+
+    // Try loading browser-saved data
+    const saved = localStorage.getItem(KEY);
+
+    if(saved){
+      try{
+        const savedData = JSON.parse(saved);
+        fc = normalize(savedData);
+      }catch(err){
+        // Old/invalid browser data — use original places.json instead
+        console.warn('Invalid saved data. Restoring original places.json.');
+        fc = structuredClone(baseData);
+        saveLocal();
+      }
+    }else{
+      fc = structuredClone(baseData);
+      saveLocal();
+    }
+
+    renderTable();
+    updateStatus();
+    newRecord();
+
+  }catch(e){
+    console.error(e);
+    document.getElementById('status').textContent =
+      'Load failed: ' + e.message;
+  }
+}
+
+function normalize(data){
+  if(!data || data.type !== 'FeatureCollection' || !Array.isArray(data.features)){
+    throw new Error('Invalid GeoJSON');
+  }
+
+  data.features.forEach((f,i)=>{
+    f.properties = f.properties || {};
+
+    if(!f.properties.id){
+      f.properties.id =
+        'loc-' + String(i+1).padStart(4,'0');
+    }
+
+    if(!f.properties.status){
+      f.properties.status='active';
+    }
+  });
+
+  return data;
+}
+
+function saveLocal(){
+  localStorage.setItem(KEY,JSON.stringify(fc));
+}
+
+function updateStatus(){
+  const active=fc.features.filter(
+    f=>(f.properties.status||'active')==='active'
+  ).length;
+
+  document.getElementById('status').textContent =
+    `Records: ${fc.features.length} | Active: ${active} | Saved in this browser.`;
+}
+
+function esc(x){
+  return String(x??'').replace(
+    /[&<>"]/g,
+    m=>({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;'
+    }[m])
+  );
+}
+
+function find(id){
+  return fc.features.find(
+    f=>String(f.properties.id)===String(id)
+  );
+}
+
+function renderTable(){
+  const q=document.getElementById('search').value.toLowerCase();
+
+  const list=fc.features.filter(f=>{
+    const p=f.properties||{};
+
+    return [
+      p.name,
+      p.address,
+      p.cat
+    ].join(' ').toLowerCase().includes(q);
+  });
+
+  document.getElementById('tbody').innerHTML=list.map(f=>{
+    const p=f.properties||{};
+
+    return `
+      <tr>
+        <td>${esc(p.id)}</td>
+        <td>${esc(p.name)}</td>
+        <td>${esc(p.cat)}</td>
+        <td>${esc(p.address)}</td>
+        <td>${esc(p.status||'active')}</td>
+        <td class="actions">
+          <button
+            type="button"
+            onclick="editRecord('${String(p.id).replace(/'/g,"\\'")}')">
+            Edit
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function newRecord(){
+  document.getElementById('formTitle').textContent='Add Location';
+
+  document.querySelector('form').reset();
+
+  document.getElementById('id').value =
+    'loc-new-'+Date.now();
+
+  document.getElementById('cat').value='culture';
+  document.getElementById('icon').value='📍';
+  document.getElementById('statusField').value='active';
+}
+
+function editRecord(id){
+  const f=find(id);
+
+  if(!f){
+    alert('Record not found. Refresh the page once.');
+    return;
+  }
+
+  const p=f.properties||{};
+  const c=f.geometry?.coordinates||[];
+
+  document.getElementById('formTitle').textContent='Edit Location';
+
+  document.getElementById('id').value=p.id||'';
+  document.getElementById('name').value=p.name||'';
+  document.getElementById('address').value=p.address||'';
+  document.getElementById('cat').value=p.cat||'culture';
+  document.getElementById('icon').value=p.icon||'📍';
+
+  document.getElementById('lng').value=c[0]??'';
+  document.getElementById('lat').value=c[1]??'';
+
+  document.getElementById('hours').value=p.hours||'';
+  document.getElementById('statusField').value=p.status||'active';
+  document.getElementById('description').value=p.description||'';
+}
+
+function saveRecord(e){
+  e.preventDefault();
+
+  const id=document.getElementById('id').value;
+
+  const lat=Number(
+    document.getElementById('lat').value
+  );
+
+  const lng=Number(
+    document.getElementById('lng').value
+  );
+
+  if(!document.getElementById('name').value.trim()){
+    alert('Name is required.');
+    return;
+  }
+
+  if(
+    !Number.isFinite(lat) ||
+    lat<-90 ||
+    lat>90 ||
+    !Number.isFinite(lng) ||
+    lng<-180 ||
+    lng>180
+  ){
+    alert('Please enter valid coordinates.');
+    return;
+  }
+
+  const p={
+    id,
+    name:document.getElementById('name').value.trim(),
+    address:document.getElementById('address').value.trim(),
+    hours:document.getElementById('hours').value.trim(),
+    cat:document.getElementById('cat').value,
+    icon:document.getElementById('icon').value.trim()||'📍',
+    status:document.getElementById('statusField').value,
+    description:document.getElementById('description').value.trim()
+  };
+
+  const f={
+    type:'Feature',
+    properties:p,
+    geometry:{
+      type:'Point',
+      coordinates:[lng,lat]
+    }
+  };
+
+  const old=find(id);
+
+  if(old){
+    fc.features[fc.features.indexOf(old)]=f;
+  }else{
+    fc.features.push(f);
+  }
+
+  saveLocal();
+  renderTable();
+  updateStatus();
+  editRecord(id);
+
+  alert('Saved. Open the map to see the updated data.');
+}
+
+function deleteCurrent(){
+  const id=document.getElementById('id').value;
+
+  if(!find(id)) return;
+
+  if(confirm('Delete this location?')){
+    fc.features=fc.features.filter(
+      f=>String(f.properties.id)!==String(id)
+    );
+
+    saveLocal();
+    renderTable();
+    updateStatus();
+    newRecord();
+  }
+}
+
+function exportJSON(){
+  const blob=new Blob(
+    [JSON.stringify(fc,null,2)],
+    {type:'application/json'}
+  );
+
+  const a=document.createElement('a');
+
+  a.href=URL.createObjectURL(blob);
+  a.download='places_updated.json';
+  a.click();
+
+  setTimeout(
+    ()=>URL.revokeObjectURL(a.href),
+    1000
+  );
+}
+
+function importJSON(e){
+  const file=e.target.files[0];
+
+  if(!file) return;
+
+  const r=new FileReader();
+
+  r.onload=()=>{
     try{
-      const response = await fetch('places.json', { cache: 'no-store' });
-      if(!response.ok){
-        throw new Error('Could not load places.json');
-        }
-      const data = await response.json();
-      baseData = normalize(data);
-      const saved = localStorage.getItem(KEY);
-      fc = saved ? normalize(JSON.parse(saved)) : structuredClone(baseData);
+      fc=normalize(JSON.parse(r.result));
+
       saveLocal();
       renderTable();
       updateStatus();
       newRecord();
+
+      alert('Imported successfully.');
+
+    }catch(err){
+      alert('Import failed: '+err.message);
     }
-    catch(e){
-      document.getElementById('status').textContent='Load failed: '+e.message;}
+  };
+
+  r.readAsText(file);
+  e.target.value='';
+}
+
+function resetData(){
+  if(confirm('Reset local changes to the original places.json?')){
+    fc=structuredClone(baseData);
+
+    saveLocal();
+    renderTable();
+    updateStatus();
+    newRecord();
   }
-function normalize(data){
-  if(!data||!Array.isArray(data.features)) throw Error('Invalid GeoJSON');
-  data.features.forEach((f,i)=>{f.properties=f.properties||{};if(!f.properties.id)f.properties.id='loc-'+String(i+1).padStart(4,'0');if(!f.properties.status)f.properties.status='active';});
-  return data;
 }
-function saveLocal(){localStorage.setItem(KEY,JSON.stringify(fc))}
-function updateStatus(){const active=fc.features.filter(f=>(f.properties.status||'active')==='active').length;document.getElementById('status').textContent=`Records: ${fc.features.length} | Active: ${active} | Saved in this browser.`}
-function esc(x){return String(x??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
-function find(id){return fc.features.find(f=>String(f.properties.id)===String(id))}
-function renderTable(){
- const q=document.getElementById('search').value.toLowerCase();
- const list=fc.features.filter(f=>{const p=f.properties||{};return[p.name,p.address,p.cat].join(' ').toLowerCase().includes(q)});
- document.getElementById('tbody').innerHTML=list.map(f=>{const p=f.properties||{};return `<tr><td>${esc(p.id)}</td><td>${esc(p.name)}</td><td>${esc(p.cat)}</td><td>${esc(p.address)}</td><td>${esc(p.status||'active')}</td><td class="actions"><button type="button" onclick="editRecord('${String(p.id).replace(/'/g,"\\'")}')">Edit</button></td></tr>`}).join('');
-}
-function newRecord(){
- document.getElementById('formTitle').textContent='Add Location';document.querySelector('form').reset();
- document.getElementById('id').value='loc-new-'+Date.now();document.getElementById('cat').value='culture';document.getElementById('icon').value='📍';document.getElementById('statusField').value='active';
-}
-function editRecord(id){
- const f=find(id);if(!f){alert('Record not found. Refresh the page once.');return}
- const p=f.properties||{},c=f.geometry.coordinates||[];
- document.getElementById('formTitle').textContent='Edit Location';document.getElementById('id').value=p.id||'';
- document.getElementById('name').value=p.name||'';document.getElementById('address').value=p.address||'';document.getElementById('cat').value=p.cat||'culture';document.getElementById('icon').value=p.icon||'📍';
- document.getElementById('lng').value=c[0]??'';document.getElementById('lat').value=c[1]??'';document.getElementById('hours').value=p.hours||'';document.getElementById('statusField').value=p.status||'active';document.getElementById('description').value=p.description||'';
-}
-function saveRecord(e){
- e.preventDefault();const id=document.getElementById('id').value,lat=Number(document.getElementById('lat').value),lng=Number(document.getElementById('lng').value);
- if(!document.getElementById('name').value.trim()){alert('Name is required.');return}
- if(!Number.isFinite(lat)||lat<-90||lat>90||!Number.isFinite(lng)||lng<-180||lng>180){alert('Please enter valid coordinates.');return}
- const p={id,name:document.getElementById('name').value.trim(),address:document.getElementById('address').value.trim(),hours:document.getElementById('hours').value.trim(),cat:document.getElementById('cat').value,icon:document.getElementById('icon').value.trim()||'📍',status:document.getElementById('statusField').value,description:document.getElementById('description').value.trim()};
- const f={type:'Feature',properties:p,geometry:{type:'Point',coordinates:[lng,lat]}},old=find(id);
- if(old) fc.features[fc.features.indexOf(old)]=f; else fc.features.push(f);
- saveLocal();renderTable();updateStatus();editRecord(id);alert('Saved. Open the map to see the updated data.');
-}
-function deleteCurrent(){
- const id=document.getElementById('id').value;if(!find(id))return;
- if(confirm('Delete this location?')){fc.features=fc.features.filter(f=>String(f.properties.id)!==String(id));saveLocal();renderTable();updateStatus();newRecord()}
-}
-function exportJSON(){
- const blob=new Blob([JSON.stringify(fc,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='places_updated.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
-}
-function importJSON(e){
- const file=e.target.files[0];if(!file)return;const r=new FileReader();
- r.onload=()=>{try{fc=normalize(JSON.parse(r.result));saveLocal();renderTable();updateStatus();newRecord();alert('Imported successfully.')}catch(err){alert('Import failed: '+err.message)}};r.readAsText(file);e.target.value=''
-}
-function resetData(){if(confirm('Reset local changes to the original places.json?')){fc=structuredClone(baseData);saveLocal();renderTable();updateStatus();newRecord()}}
+
 start();
 </script>
 </body></html>
