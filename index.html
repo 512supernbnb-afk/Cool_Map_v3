@@ -250,7 +250,6 @@
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
-<script src="places_data.js"></script>
 </head>
 <body>
 
@@ -392,9 +391,17 @@ window.addEventListener('storage', (event) => {
 // browser storage events are not delivered as expected.
 setInterval(refreshMapFromSavedData, 1000);
 
-Promise.resolve(window.INITIAL_PLACES)
+fetch(PLACES_URL, { cache: 'no-store' })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Could not load places.json');
+        }
+        return response.json();
+    })
     .then(data => {
-        if (!data || !Array.isArray(data.features)) throw new Error('Embedded location data is invalid');
+        if (!data || !Array.isArray(data.features)) {
+            throw new Error('Invalid places.json format');
+        }
         PLACES = loadSavedPlaces(data);
         initMap();
     })
