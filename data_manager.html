@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cool Map – Location Data Manager</title>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,"Microsoft JhengHei",sans-serif;margin:0;background:#f5f7fb;color:#172033}
+header{background:#fff;padding:18px 24px;box-shadow:0 2px 10px #0001;position:sticky;top:0;z-index:5}
+h1{margin:0 0 5px;font-size:22px}.sub{color:#667085;font-size:13px}
+.wrap{max-width:1250px;margin:22px auto;padding:0 18px}.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:15px}
+button{border:0;border-radius:9px;padding:10px 14px;cursor:pointer;background:#0b76b8;color:#fff;font-weight:600}
+button.secondary{background:#e9eef5;color:#172033}.danger{background:#c62828}
+.card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 10px #0000000d}
+.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #d0d5dd;border-radius:8px;background:#fff}
+textarea{min-height:75px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:12px;font-weight:700;margin:10px 0 5px}
+.status{padding:10px;border-radius:8px;background:#eef8ff;margin-bottom:10px;font-size:13px}
+.small{font-size:12px;color:#667085;line-height:1.5}
+.tablewrap{overflow:auto;max-height:65vh}table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}th{background:#f8fafc;position:sticky;top:0}
+.actions button{padding:7px 10px}.notice{background:#fff7e6;padding:10px;border-radius:8px;margin-bottom:12px;font-size:12px}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
+</style>
+<script src="places_data.js"></script>
+</head>
+<body>
+<header><h1>Cool Map – Location Data Manager</h1><div class="sub">For non-technical staff: manage locations without editing JavaScript or JSON.</div></header>
+<div class="wrap">
+<div class="toolbar">
+<button onclick="location.href='index.html'">← Open Map</button>
+<button onclick="newRecord()">+ Add Location</button>
+<button class="secondary" onclick="exportJSON()">Export JSON</button>
+<button class="secondary" onclick="document.getElementById('file').click()">Import JSON</button>
+<button class="secondary" onclick="resetData()">Reset to Original Data</button>
+<input id="file" type="file" accept=".json" style="display:none" onchange="importJSON(event)">
+</div>
+<div class="notice"><b>Current prototype:</b> changes are stored in this browser and shared with the map on the same website. For the final Bureau system, this storage will be replaced by a database/API so authorized staff can share updates.</div>
+<div id="status" class="status">Loading…</div>
+<div class="grid">
+<div class="card">
+<h2>Location Records</h2>
+<input id="search" placeholder="Search by name, address or category" oninput="renderTable()">
+<div class="tablewrap"><table><thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Address</th><th>Status</th><th></th></tr></thead><tbody id="tbody"></tbody></table></div>
+</div>
+<div class="card">
+<h2 id="formTitle">Add Location</h2>
+<form onsubmit="saveRecord(event)">
+<input type="hidden" id="id">
+<label>Name *</label><input id="name" required>
+<label>Address</label><input id="address">
+<div class="row"><div><label>Category *</label><select id="cat" required>
+<option value="culture">Culture / 文化場館</option><option value="cool">Cool Place / 涼適場所</option><option value="convenience">Convenience / 便利商店</option><option value="department">Department Store / 百貨公司</option>
+</select></div><div><label>Icon</label><input id="icon" placeholder="📍"></div></div>
+<div class="row"><div><label>Latitude *</label><input id="lat" type="number" step="any" required></div><div><label>Longitude *</label><input id="lng" type="number" step="any" required></div></div>
+<label>Opening Hours</label><textarea id="hours"></textarea>
+<div class="row"><div><label>Status</label><select id="statusField"><option value="active">Active</option><option value="inactive">Inactive</option></select></div><div><label>Description</label><input id="description"></div></div>
+<div class="toolbar" style="margin-top:15px"><button type="submit">Save</button><button type="button" class="secondary" onclick="newRecord()">Clear</button><button type="button" class="danger" onclick="deleteCurrent()">Delete</button></div>
+<div class="small">Latitude must be between -90 and 90. Longitude must be between -180 and 180. Use Export JSON to make a backup.</div>
+</form>
+</div></div></div>
+<script>
+const KEY='cool_map_places_v1';
+let baseData=null, fc=null;
+
+function start(){
+  try{
+    baseData=normalize(window.INITIAL_PLACES);
+    const saved=localStorage.getItem(KEY);
+    fc=saved?normalize(JSON.parse(saved)):structuredClone(baseData);
+    saveLocal(); renderTable(); updateStatus(); newRecord();
+  }catch(e){
+    document.getElementById('status').textContent='Load failed: '+e.message;
+  }
+}
+function normalize(data){
+  if(!data||!Array.isArray(data.features)) throw Error('Invalid GeoJSON');
+  data.features.forEach((f,i)=>{f.properties=f.properties||{};if(!f.properties.id)f.properties.id='loc-'+String(i+1).padStart(4,'0');if(!f.properties.status)f.properties.status='active';});
+  return data;
+}
+function saveLocal(){localStorage.setItem(KEY,JSON.stringify(fc))}
+function updateStatus(){const active=fc.features.filter(f=>(f.properties.status||'active')==='active').length;document.getElementById('status').textContent=`Records: ${fc.features.length} | Active: ${active} | Saved in this browser.`}
+function esc(x){return String(x??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function find(id){return fc.features.find(f=>String(f.properties.id)===String(id))}
+function renderTable(){
+ const q=document.getElementById('search').value.toLowerCase();
+ const list=fc.features.filter(f=>{const p=f.properties||{};return[p.name,p.address,p.cat].join(' ').toLowerCase().includes(q)});
+ document.getElementById('tbody').innerHTML=list.map(f=>{const p=f.properties||{};return `<tr><td>${esc(p.id)}</td><td>${esc(p.name)}</td><td>${esc(p.cat)}</td><td>${esc(p.address)}</td><td>${esc(p.status||'active')}</td><td class="actions"><button type="button" onclick="editRecord('${String(p.id).replace(/'/g,"\\'")}')">Edit</button></td></tr>`}).join('');
+}
+function newRecord(){
+ document.getElementById('formTitle').textContent='Add Location';document.querySelector('form').reset();
+ document.getElementById('id').value='loc-new-'+Date.now();document.getElementById('cat').value='culture';document.getElementById('icon').value='📍';document.getElementById('statusField').value='active';
+}
+function editRecord(id){
+ const f=find(id);if(!f){alert('Record not found. Refresh the page once.');return}
+ const p=f.properties||{},c=f.geometry.coordinates||[];
+ document.getElementById('formTitle').textContent='Edit Location';document.getElementById('id').value=p.id||'';
+ document.getElementById('name').value=p.name||'';document.getElementById('address').value=p.address||'';document.getElementById('cat').value=p.cat||'culture';document.getElementById('icon').value=p.icon||'📍';
+ document.getElementById('lng').value=c[0]??'';document.getElementById('lat').value=c[1]??'';document.getElementById('hours').value=p.hours||'';document.getElementById('statusField').value=p.status||'active';document.getElementById('description').value=p.description||'';
+}
+function saveRecord(e){
+ e.preventDefault();const id=document.getElementById('id').value,lat=Number(document.getElementById('lat').value),lng=Number(document.getElementById('lng').value);
+ if(!document.getElementById('name').value.trim()){alert('Name is required.');return}
+ if(!Number.isFinite(lat)||lat<-90||lat>90||!Number.isFinite(lng)||lng<-180||lng>180){alert('Please enter valid coordinates.');return}
+ const p={id,name:document.getElementById('name').value.trim(),address:document.getElementById('address').value.trim(),hours:document.getElementById('hours').value.trim(),cat:document.getElementById('cat').value,icon:document.getElementById('icon').value.trim()||'📍',status:document.getElementById('statusField').value,description:document.getElementById('description').value.trim()};
+ const f={type:'Feature',properties:p,geometry:{type:'Point',coordinates:[lng,lat]}},old=find(id);
+ if(old) fc.features[fc.features.indexOf(old)]=f; else fc.features.push(f);
+ saveLocal();renderTable();updateStatus();editRecord(id);alert('Saved. Open the map to see the updated data.');
+}
+function deleteCurrent(){
+ const id=document.getElementById('id').value;if(!find(id))return;
+ if(confirm('Delete this location?')){fc.features=fc.features.filter(f=>String(f.properties.id)!==String(id));saveLocal();renderTable();updateStatus();newRecord()}
+}
+function exportJSON(){
+ const blob=new Blob([JSON.stringify(fc,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='places_updated.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+}
+function importJSON(e){
+ const file=e.target.files[0];if(!file)return;const r=new FileReader();
+ r.onload=()=>{try{fc=normalize(JSON.parse(r.result));saveLocal();renderTable();updateStatus();newRecord();alert('Imported successfully.')}catch(err){alert('Import failed: '+err.message)}};r.readAsText(file);e.target.value=''
+}
+function resetData(){if(confirm('Reset local changes to the original places.json?')){fc=structuredClone(baseData);saveLocal();renderTable();updateStatus();newRecord()}}
+start();
+</script>
+</body></html>

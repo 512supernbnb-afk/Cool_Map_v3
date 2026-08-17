@@ -250,6 +250,7 @@
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
+<script src="places_data.js"></script>
 </head>
 <body>
 
@@ -309,6 +310,8 @@
         <div class="menu-legend-item"><div class="legend-dot convenience">🏪</div><span>便利商店（7-ELEVEN / 全家）</span></div>
         <div class="menu-legend-item"><div class="legend-dot department">🏢</div><span>百貨公司</span></div>
         <div class="menu-legend-item"><div class="legend-dot user">●</div><span>你目前的位置</span></div>
+        <div class="menu-section-title">資料管理</div>
+        <div class="menu-partner"><a href="data_manager.html" style="display:block;text-decoration:none;color:#0369A1;font-weight:700;">🛠️ 開啟地點資料管理工具</a><div style="margin-top:6px;color:#64748B;font-size:12px;">可新增、修改、停用與匯出地點，不需要編輯程式碼。</div></div>
         <div class="menu-section-title">關於</div>
         <div class="menu-partner">
             <strong>🤝 合作夥伴</strong>
@@ -339,17 +342,66 @@ const PLACES_URL  = './places.json';
 let map, userLocation = null;
 let currentCat = 'all', nearestFeature = null;
 let PLACES = null;
-let clusterGroup = null;   // 目前顯示中的 cluster group
+let clusterGroup = null;
+let renderTimer = null;
 
-/* ── 載入資料 ── */
-fetch(PLACES_URL)
-    .then(r => { if (!r.ok) throw new Error('places.json 讀取失敗：' + r.status); return r.json(); })
-    .then(data => { PLACES = data; initMap(); })
+const STORAGE_KEY = 'cool_map_places_v1';
+const MAX_DETAIL_MARKERS = 3000;
+
+/* ── LOAD DATA ── */
+function normalizePlaces(data) {
+    if (!data || !Array.isArray(data.features)) throw new Error('Invalid places.json format');
+    data.features.forEach((f, i) => {
+        if (!f.properties) f.properties = {};
+        if (!f.properties.id) f.properties.id = 'loc-' + String(i + 1).padStart(4, '0');
+        if (!f.properties.status) f.properties.status = 'active';
+    });
+    return data;
+}
+
+function loadSavedPlaces(data) {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return normalizePlaces(JSON.parse(saved));
+    } catch (e) {
+        console.warn('Saved location data could not be loaded:', e);
+    }
+    return normalizePlaces(data);
+}
+
+function refreshMapFromSavedData() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+        const updated = normalizePlaces(JSON.parse(saved));
+        PLACES = updated;
+        drawMarkers();
+    } catch (e) {
+        console.warn('Could not refresh map from saved data:', e);
+    }
+}
+
+// Keep the map synchronized with Data Manager changes in another tab/window.
+window.addEventListener('storage', (event) => {
+    if (event.key === STORAGE_KEY && event.newValue) {
+        refreshMapFromSavedData();
+    }
+});
+
+// Also check periodically so the prototype remains synchronized even when
+// browser storage events are not delivered as expected.
+setInterval(refreshMapFromSavedData, 1000);
+
+Promise.resolve(window.INITIAL_PLACES)
+    .then(data => {
+        if (!data || !Array.isArray(data.features)) throw new Error('Embedded location data is invalid');
+        PLACES = loadSavedPlaces(data);
+        initMap();
+    })
     .catch(err => {
         document.body.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#c00">
-            <h2>⚠️ 地點資料載入失敗</h2>
+            <h2>⚠️ Location data failed to load</h2>
             <p style="margin-top:12px">${err.message}</p>
-            <p style="margin-top:8px;color:#555">請確認 places.json 與 index.html 在同一目錄，且伺服器允許存取。</p>
         </div>`;
     });
 
@@ -360,13 +412,21 @@ function initMap() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
     map.on('click', () => { if (window.innerWidth < 768) closeDrawer(); });
 
-    drawMarkers();   // 先畫點，不需等定位
+    drawMarkers();
+
+    // Re-render only after the map settles, instead of on every tiny movement.
+    map.on('moveend zoomend', scheduleMarkerRedraw);
 
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(onLocFound, onLocError, { enableHighAccuracy: true, timeout: 10000 });
     } else {
         setGpsBar('無法使用定位功能', true);
     }
+}
+
+function scheduleMarkerRedraw() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(drawMarkers, 120);
 }
 
 function onLocFound(pos) {
@@ -379,7 +439,6 @@ function onLocFound(pos) {
 
     setGpsBar('📍 定位完成', true);
 
-    // 計算最近點（供搜尋按鈕用），但不自動跳轉或開 drawer
     const filtered = getFiltered();
     if (filtered.length > 0) {
         nearestFeature = turf.nearestPoint(
@@ -400,20 +459,76 @@ function onLocFound(pos) {
 
 function onLocError() { setGpsBar('⚠️ 定位失敗，請允許位置存取', true); }
 
-/* ── 取得目前分類的 features ── */
+/* ── FILTER ── */
 function getFiltered() {
-    return PLACES.features.filter(f => currentCat === 'all' || f.properties.cat === currentCat);
+    return PLACES.features.filter(f =>
+        (f.properties.status || 'active') !== 'inactive' &&
+        (currentCat === 'all' || f.properties.cat === currentCat)
+    );
 }
 
-/* ── DRAW MARKERS（含 clustering）── */
+/* Only keep locations inside/near the current map viewport. */
+function getVisibleFeatures(features) {
+    const b = map.getBounds().pad(0.20);
+    return features.filter(f => {
+        const [lng, lat] = f.geometry.coordinates;
+        return b.contains([lat, lng]);
+    });
+}
+
+/* ── LOW-ZOOM AGGREGATION ──
+   If thousands of real points are inside the viewport, do not create thousands
+   of Leaflet marker objects. Instead, create a small number of spatial cells.
+   The cell number is exact; zooming in switches back to real locations.
+*/
+function buildAggregates(features) {
+    const b = map.getBounds();
+    const latStep = Math.max((b.getNorth() - b.getSouth()) / 40, 0.00001);
+    const lngStep = Math.max((b.getEast() - b.getWest()) / 40, 0.00001);
+    const bins = new Map();
+
+    features.forEach(f => {
+        const [lng, lat] = f.geometry.coordinates;
+        const x = Math.floor((lng - b.getWest()) / lngStep);
+        const y = Math.floor((lat - b.getSouth()) / latStep);
+        const key = x + ':' + y;
+        if (!bins.has(key)) bins.set(key, { count: 0, lngSum: 0, latSum: 0, sample: f });
+        const bin = bins.get(key);
+        bin.count++;
+        bin.lngSum += lng;
+        bin.latSum += lat;
+    });
+
+    return [...bins.values()].map(bin => ({
+        lat: bin.latSum / bin.count,
+        lng: bin.lngSum / bin.count,
+        count: bin.count,
+        sample: bin.sample
+    }));
+}
+
+function aggregateIcon(count, color) {
+    const size = count < 10 ? 44 : count < 100 ? 54 : 64;
+    const font = count < 100 ? 14 : 12;
+    return L.divIcon({
+        className: '',
+        html: `<div class="ccluster-outer" style="width:${size}px;height:${size}px;background:${color}33;">
+                   <div class="ccluster-inner" style="width:${size-10}px;height:${size-10}px;background:${color};font-size:${font}px;">${count}</div>
+               </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+    });
+}
+
+/* ── DRAW MARKERS ── */
 function drawMarkers() {
-    // 移除舊的 cluster group
+    if (!map || !PLACES) return;
+
     if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
     nearestFeature = null;
 
     const filtered = getFiltered();
 
-    // 若有定位，重新計算最近點
     if (userLocation && filtered.length > 0) {
         nearestFeature = turf.nearestPoint(
             turf.point([userLocation.lng, userLocation.lat]),
@@ -421,22 +536,38 @@ function drawMarkers() {
         );
     }
 
-    // 「全部」模式混色用藍色；單一分類用該分類顏色
+    const visible = getVisibleFeatures(filtered);
+
     const clusterColor = (currentCat !== 'all' && CATEGORY_CONFIG[currentCat])
         ? CATEGORY_CONFIG[currentCat].color
         : '#0369A1';
+
+    // At high density, spatial aggregation avoids creating tens of thousands
+    // of DOM-backed map markers.
+    if (visible.length > MAX_DETAIL_MARKERS) {
+        const aggregates = buildAggregates(visible);
+        clusterGroup = L.layerGroup();
+
+        aggregates.forEach(a => {
+            const marker = L.marker([a.lat, a.lng], { icon: aggregateIcon(a.count, clusterColor) });
+            marker.on('click', () => {
+                map.flyTo([a.lat, a.lng], Math.min(map.getZoom() + 2, 18), { animate: true, duration: 0.5 });
+            });
+            clusterGroup.addLayer(marker);
+        });
+        map.addLayer(clusterGroup);
+        return;
+    }
 
     clusterGroup = L.markerClusterGroup({
         maxClusterRadius: 60,
         showCoverageOnHover: false,
         iconCreateFunction: function(cluster) {
             const count = cluster.getChildCount();
-            // 數量越多圓圈越大
             const outerSize = count < 10 ? 44 : count < 50 ? 54 : 64;
             const innerSize = outerSize - 10;
             const fontSize  = count < 100 ? 14 : 12;
-            // 外圈半透明、內圈實色
-            const outerBg = clusterColor + '33';   // 20% opacity hex
+            const outerBg = clusterColor + '33';
             return L.divIcon({
                 className: '',
                 html: `<div class="ccluster-outer" style="width:${outerSize}px;height:${outerSize}px;background:${outerBg};">
@@ -444,13 +575,13 @@ function drawMarkers() {
                                ${count}
                            </div>
                        </div>`,
-                iconSize:   L.point(outerSize, outerSize),
+                iconSize: L.point(outerSize, outerSize),
                 iconAnchor: L.point(outerSize / 2, outerSize / 2)
             });
         }
     });
 
-    filtered.forEach(f => {
+    visible.forEach(f => {
         const [lng, lat] = f.geometry.coordinates;
         const p = f.properties;
         const isNearest = nearestFeature &&
@@ -474,6 +605,19 @@ function drawMarkers() {
 
     map.addLayer(clusterGroup);
 }
+
+/* ── DATA MANAGER SYNC ── */
+window.addEventListener('storage', e => {
+    if (e.key !== STORAGE_KEY || !e.newValue) return;
+    try {
+        PLACES = normalizePlaces(JSON.parse(e.newValue));
+        drawMarkers();
+        showToast('✅ 地點資料已更新');
+    } catch (err) {
+        console.warn('Could not sync location data:', err);
+    }
+});
+
 
 /* ── FILTER ── */
 function filterCat(el, cat) {
@@ -500,6 +644,7 @@ function openDrawer(feature, isNearest) {
         <div style="margin-bottom:8px">${tags}</div>
         <div class="drawer-name">${p.icon} ${p.name}</div>
         <div class="drawer-address"><span>📍</span><span>${p.address}</span></div>
+        ${p.description ? `<div class="drawer-description" style="margin:10px 0;padding:10px 12px;background:#f5f7fa;border-radius:10px;line-height:1.5;"><strong>Description</strong><br>${p.description}</div>` : ''}
         <div class="drawer-hours">
             <div class="drawer-hours-icon">🕐</div>
             <div>

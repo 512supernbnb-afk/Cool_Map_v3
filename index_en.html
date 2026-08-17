@@ -252,6 +252,7 @@
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
+<script src="places_data.js"></script>
 </head>
 <body>
 
@@ -341,17 +342,66 @@ const PLACES_URL  = './places.json';
 let map, userLocation = null;
 let currentCat = 'all', nearestFeature = null;
 let PLACES = null;
-let clusterGroup = null;   // Currently displayed cluster group
+let clusterGroup = null;
+let renderTimer = null;
 
-/* ── Load data ── */
-fetch(PLACES_URL)
-    .then(r => { if (!r.ok) throw new Error('Failed to load places.json: ' + r.status); return r.json(); })
-    .then(data => { PLACES = data; initMap(); })
+const STORAGE_KEY = 'cool_map_places_v1';
+const MAX_DETAIL_MARKERS = 3000;
+
+/* ── LOAD DATA ── */
+function normalizePlaces(data) {
+    if (!data || !Array.isArray(data.features)) throw new Error('Invalid places.json format');
+    data.features.forEach((f, i) => {
+        if (!f.properties) f.properties = {};
+        if (!f.properties.id) f.properties.id = 'loc-' + String(i + 1).padStart(4, '0');
+        if (!f.properties.status) f.properties.status = 'active';
+    });
+    return data;
+}
+
+function loadSavedPlaces(data) {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return normalizePlaces(JSON.parse(saved));
+    } catch (e) {
+        console.warn('Saved location data could not be loaded:', e);
+    }
+    return normalizePlaces(data);
+}
+
+function refreshMapFromSavedData() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+        const updated = normalizePlaces(JSON.parse(saved));
+        PLACES = updated;
+        drawMarkers();
+    } catch (e) {
+        console.warn('Could not refresh map from saved data:', e);
+    }
+}
+
+// Keep the map synchronized with Data Manager changes in another tab/window.
+window.addEventListener('storage', (event) => {
+    if (event.key === STORAGE_KEY && event.newValue) {
+        refreshMapFromSavedData();
+    }
+});
+
+// Also check periodically so the prototype remains synchronized even when
+// browser storage events are not delivered as expected.
+setInterval(refreshMapFromSavedData, 1000);
+
+Promise.resolve(window.INITIAL_PLACES)
+    .then(data => {
+        if (!data || !Array.isArray(data.features)) throw new Error('Embedded location data is invalid');
+        PLACES = loadSavedPlaces(data);
+        initMap();
+    })
     .catch(err => {
         document.body.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#c00">
-            <h2>⚠️ Failed to load location data</h2>
+            <h2>⚠️ Location data failed to load</h2>
             <p style="margin-top:12px">${err.message}</p>
-            <p style="margin-top:8px;color:#555">Please make sure places.json is in the same directory as index.html and that the server allows access to it.</p>
         </div>`;
     });
 
@@ -362,13 +412,21 @@ function initMap() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
     map.on('click', () => { if (window.innerWidth < 768) closeDrawer(); });
 
-    drawMarkers();   // Draw markers first, no need to wait for geolocation
+    drawMarkers();
+
+    // Re-render only after the map settles, instead of on every tiny movement.
+    map.on('moveend zoomend', scheduleMarkerRedraw);
 
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(onLocFound, onLocError, { enableHighAccuracy: true, timeout: 10000 });
     } else {
-        setGpsBar('Geolocation is not available', true);
+        setGpsBar('無法使用定位功能', true);
     }
+}
+
+function scheduleMarkerRedraw() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(drawMarkers, 120);
 }
 
 function onLocFound(pos) {
@@ -377,11 +435,10 @@ function onLocFound(pos) {
 
     L.circleMarker(userLocation, {
         radius: 10, fillColor: "#10B981", color: "#fff", weight: 3, fillOpacity: 1
-    }).addTo(map).bindTooltip("You are here", { permanent: false, direction: "top" });
+    }).addTo(map).bindTooltip("你在這裡", { permanent: false, direction: "top" });
 
-    setGpsBar('📍 Location found', true);
+    setGpsBar('📍 定位完成', true);
 
-    // Calculate the nearest point (for the search button), but don't auto-jump or open the drawer
     const filtered = getFiltered();
     if (filtered.length > 0) {
         nearestFeature = turf.nearestPoint(
@@ -400,22 +457,78 @@ function onLocFound(pos) {
         }).catch(() => { document.getElementById('w-loading').textContent = '--'; });
 }
 
-function onLocError() { setGpsBar('⚠️ Location failed, please allow location access', true); }
+function onLocError() { setGpsBar('⚠️ 定位失敗，請允許位置存取', true); }
 
-/* ── Get features for the current category ── */
+/* ── FILTER ── */
 function getFiltered() {
-    return PLACES.features.filter(f => currentCat === 'all' || f.properties.cat === currentCat);
+    return PLACES.features.filter(f =>
+        (f.properties.status || 'active') !== 'inactive' &&
+        (currentCat === 'all' || f.properties.cat === currentCat)
+    );
 }
 
-/* ── DRAW MARKERS (with clustering) ── */
+/* Only keep locations inside/near the current map viewport. */
+function getVisibleFeatures(features) {
+    const b = map.getBounds().pad(0.20);
+    return features.filter(f => {
+        const [lng, lat] = f.geometry.coordinates;
+        return b.contains([lat, lng]);
+    });
+}
+
+/* ── LOW-ZOOM AGGREGATION ──
+   If thousands of real points are inside the viewport, do not create thousands
+   of Leaflet marker objects. Instead, create a small number of spatial cells.
+   The cell number is exact; zooming in switches back to real locations.
+*/
+function buildAggregates(features) {
+    const b = map.getBounds();
+    const latStep = Math.max((b.getNorth() - b.getSouth()) / 40, 0.00001);
+    const lngStep = Math.max((b.getEast() - b.getWest()) / 40, 0.00001);
+    const bins = new Map();
+
+    features.forEach(f => {
+        const [lng, lat] = f.geometry.coordinates;
+        const x = Math.floor((lng - b.getWest()) / lngStep);
+        const y = Math.floor((lat - b.getSouth()) / latStep);
+        const key = x + ':' + y;
+        if (!bins.has(key)) bins.set(key, { count: 0, lngSum: 0, latSum: 0, sample: f });
+        const bin = bins.get(key);
+        bin.count++;
+        bin.lngSum += lng;
+        bin.latSum += lat;
+    });
+
+    return [...bins.values()].map(bin => ({
+        lat: bin.latSum / bin.count,
+        lng: bin.lngSum / bin.count,
+        count: bin.count,
+        sample: bin.sample
+    }));
+}
+
+function aggregateIcon(count, color) {
+    const size = count < 10 ? 44 : count < 100 ? 54 : 64;
+    const font = count < 100 ? 14 : 12;
+    return L.divIcon({
+        className: '',
+        html: `<div class="ccluster-outer" style="width:${size}px;height:${size}px;background:${color}33;">
+                   <div class="ccluster-inner" style="width:${size-10}px;height:${size-10}px;background:${color};font-size:${font}px;">${count}</div>
+               </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+    });
+}
+
+/* ── DRAW MARKERS ── */
 function drawMarkers() {
-    // Remove old cluster group
+    if (!map || !PLACES) return;
+
     if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
     nearestFeature = null;
 
     const filtered = getFiltered();
 
-    // If located, recalculate nearest point
     if (userLocation && filtered.length > 0) {
         nearestFeature = turf.nearestPoint(
             turf.point([userLocation.lng, userLocation.lat]),
@@ -423,22 +536,38 @@ function drawMarkers() {
         );
     }
 
-    // Use blue for mixed colors in "all" mode; use the category's own color for a single category
+    const visible = getVisibleFeatures(filtered);
+
     const clusterColor = (currentCat !== 'all' && CATEGORY_CONFIG[currentCat])
         ? CATEGORY_CONFIG[currentCat].color
         : '#0369A1';
+
+    // At high density, spatial aggregation avoids creating tens of thousands
+    // of DOM-backed map markers.
+    if (visible.length > MAX_DETAIL_MARKERS) {
+        const aggregates = buildAggregates(visible);
+        clusterGroup = L.layerGroup();
+
+        aggregates.forEach(a => {
+            const marker = L.marker([a.lat, a.lng], { icon: aggregateIcon(a.count, clusterColor) });
+            marker.on('click', () => {
+                map.flyTo([a.lat, a.lng], Math.min(map.getZoom() + 2, 18), { animate: true, duration: 0.5 });
+            });
+            clusterGroup.addLayer(marker);
+        });
+        map.addLayer(clusterGroup);
+        return;
+    }
 
     clusterGroup = L.markerClusterGroup({
         maxClusterRadius: 60,
         showCoverageOnHover: false,
         iconCreateFunction: function(cluster) {
             const count = cluster.getChildCount();
-            // Bigger circle for more items
             const outerSize = count < 10 ? 44 : count < 50 ? 54 : 64;
             const innerSize = outerSize - 10;
             const fontSize  = count < 100 ? 14 : 12;
-            // Outer ring semi-transparent, inner circle solid color
-            const outerBg = clusterColor + '33';   // 20% opacity hex
+            const outerBg = clusterColor + '33';
             return L.divIcon({
                 className: '',
                 html: `<div class="ccluster-outer" style="width:${outerSize}px;height:${outerSize}px;background:${outerBg};">
@@ -446,13 +575,13 @@ function drawMarkers() {
                                ${count}
                            </div>
                        </div>`,
-                iconSize:   L.point(outerSize, outerSize),
+                iconSize: L.point(outerSize, outerSize),
                 iconAnchor: L.point(outerSize / 2, outerSize / 2)
             });
         }
     });
 
-    filtered.forEach(f => {
+    visible.forEach(f => {
         const [lng, lat] = f.geometry.coordinates;
         const p = f.properties;
         const isNearest = nearestFeature &&
@@ -476,6 +605,19 @@ function drawMarkers() {
 
     map.addLayer(clusterGroup);
 }
+
+/* ── DATA MANAGER SYNC ── */
+window.addEventListener('storage', e => {
+    if (e.key !== STORAGE_KEY || !e.newValue) return;
+    try {
+        PLACES = normalizePlaces(JSON.parse(e.newValue));
+        drawMarkers();
+        showToast('✅ 地點資料已更新');
+    } catch (err) {
+        console.warn('Could not sync location data:', err);
+    }
+});
+
 
 /* ── FILTER ── */
 function filterCat(el, cat) {
@@ -502,6 +644,7 @@ function openDrawer(feature, isNearest) {
         <div style="margin-bottom:8px">${tags}</div>
         <div class="drawer-name">${p.icon} ${p.name}</div>
         <div class="drawer-address"><span>📍</span><span>${p.address}</span></div>
+        ${p.description ? `<div class="drawer-description" style="margin:10px 0;padding:10px 12px;background:#f5f7fa;border-radius:10px;line-height:1.5;"><strong>Description</strong><br>${p.description}</div>` : ''}
         <div class="drawer-hours">
             <div class="drawer-hours-icon">🕐</div>
             <div>
