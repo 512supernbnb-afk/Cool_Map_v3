@@ -84,25 +84,50 @@ const DEFAULT_CATEGORIES=[
 let baseData=null,fc=null,categories=[];
 
 async function start(){
- try{
-  let data;
   try{
-   const response=await fetch('./places.json',{cache:'no-store'});
-   if(!response.ok)throw new Error('Could not load places.json');
-   data=await response.json();
-  }catch(fetchError){
-   data={type:'FeatureCollection',features:[]};
+    let data;
+
+    const response = await fetch('./places.json', { cache: 'no-store' });
+
+    if(!response.ok){
+      throw new Error('Could not load places.json');
+    }
+
+    data = await response.json();
+
+    // Load and validate original GeoJSON
+    baseData = normalize(data);
+
+    // First load saved location data
+    const saved = localStorage.getItem(KEY);
+
+    if(saved){
+      try{
+        fc = normalize(JSON.parse(saved));
+      }catch(err){
+        console.warn('Invalid saved data. Restoring places.json.');
+        fc = structuredClone(baseData);
+        saveLocal();
+      }
+    }else{
+      fc = structuredClone(baseData);
+      saveLocal();
+    }
+
+    // IMPORTANT:
+    // fc must exist before categories are loaded
+    loadCategories();
+
+    renderCategories();
+    renderTable();
+    updateStatus();
+    newRecord();
+
+  }catch(e){
+    console.error(e);
+    document.getElementById('status').textContent =
+      'Load failed: ' + e.message;
   }
-  baseData=normalize(data);
-  loadCategories();
-  const saved=localStorage.getItem(KEY);
-  if(saved){
-   try{fc=normalize(JSON.parse(saved));}
-   catch(e){fc=structuredClone(baseData);saveLocal();}
-  }else{fc=structuredClone(baseData);saveLocal();}
-  renderCategories();
-  renderTable();updateStatus();newRecord();
- }catch(e){document.getElementById('status').textContent='Load failed: '+e.message;}
 }
 function normalize(data){
  if(!data||data.type!=='FeatureCollection'||!Array.isArray(data.features))throw new Error('Invalid GeoJSON');
