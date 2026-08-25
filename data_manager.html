@@ -21,6 +21,7 @@ label{display:block;font-size:12px;font-weight:700;margin:10px 0 5px}
 .tablewrap{overflow:auto;max-height:65vh}table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}th{background:#f8fafc;position:sticky;top:0}
 .actions button{padding:7px 10px}.notice{background:#fff7e6;padding:10px;border-radius:8px;margin-bottom:12px;font-size:12px}
+.catlist{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:11px;background:#eef2f7;border-radius:20px;padding:5px 8px}
 @media(max-width:850px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
 </style>
 </head>
@@ -35,7 +36,7 @@ th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;vertical-align:to
 <button class="secondary" onclick="resetData()">Reset to Original Data</button>
 <input id="file" type="file" accept=".json" style="display:none" onchange="importJSON(event)">
 </div>
-<div class="notice"><b>Current prototype:</b> changes are stored in this browser and shared with the map on the same website. For the final Bureau system, this storage will be replaced by a database/API so authorized staff can share updates.</div>
+<div class="notice"><b>Current prototype:</b> saved changes are stored in this browser and shared with the map on the same browser. New categories are also saved in this browser. A final multi-user system will use a shared database/API.</div>
 <div id="status" class="status">Loading…</div>
 <div class="grid">
 <div class="card">
@@ -49,329 +50,286 @@ th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;vertical-align:to
 <input type="hidden" id="id">
 <label>Name *</label><input id="name" required>
 <label>Address</label><input id="address">
-<div class="row"><div><label>Category *</label><select id="cat" required>
-<option value="culture">Culture / 文化場館</option><option value="cool">Cool Place / 涼適場所</option><option value="convenience">Convenience / 便利商店</option><option value="department">Department Store / 百貨公司</option>
-</select></div><div><label>Icon</label><input id="icon" placeholder="📍"></div></div>
+<div class="row">
+<div>
+<label>Category *</label>
+<select id="cat" required>
+  <option value="culture">Culture / 文化場館</option>
+  <option value="cool">Cool Place / 涼適場所</option>
+  <option value="convenience">Convenience / 便利商店</option>
+  <option value="department">Department Store / 百貨公司</option>
+  <option value="__ACTION_NEW__">➕ ADD NEW CATEGORY</option>
+  <option value="__ACTION_DELETE__">🗑 DELETE CATEGORY</option>
+</select>
+<div id="catlist" class="catlist"></div>
+</div>
+<div><label>Icon</label><input id="icon" placeholder="📍"></div>
+</div>
 <div class="row"><div><label>Latitude *</label><input id="lat" type="number" step="any" required></div><div><label>Longitude *</label><input id="lng" type="number" step="any" required></div></div>
 <label>Opening Hours</label><textarea id="hours"></textarea>
 <div class="row"><div><label>Status</label><select id="statusField"><option value="active">Active</option><option value="inactive">Inactive</option></select></div><div><label>Description</label><input id="description"></div></div>
 <div class="toolbar" style="margin-top:15px"><button type="submit">Save</button><button type="button" class="secondary" onclick="newRecord()">Clear</button><button type="button" class="danger" onclick="deleteCurrent()">Delete</button></div>
-<div class="small">Latitude must be between -90 and 90. Longitude must be between -180 and 180. Use Export JSON to make a backup.</div>
+<div class="small">Valid coordinates are required. New categories can be created from the Category controls. Use Export JSON for a backup.</div>
 </form>
 </div></div></div>
 <script>
 const KEY='cool_map_places_v1';
-let baseData=null, fc=null;
+const CAT_KEY='cool_map_categories_v1';
+const DEFAULT_CATEGORIES=[
+ {value:'culture',label:'Culture / 文化場館'},
+ {value:'cool',label:'Cool Place / 涼適場所'},
+ {value:'convenience',label:'Convenience / 便利商店'},
+ {value:'department',label:'Department Store / 百貨公司'}
+];
+let baseData=null,fc=null,categories=[];
 
 async function start(){
+ try{
+  let data;
   try{
-    // Load the original 128-location GeoJSON directly from places.json
-    const response = await fetch('./places.json', { cache: 'no-store' });
-
-    if(!response.ok){
-      throw new Error('Could not load places.json');
-    }
-
-    const data = await response.json();
-
-    // Validate original data
-    baseData = normalize(data);
-
-    // Try loading browser-saved data
-    const saved = localStorage.getItem(KEY);
-
-    if(saved){
-      try{
-        const savedData = JSON.parse(saved);
-        fc = normalize(savedData);
-      }catch(err){
-        // Old/invalid browser data — use original places.json instead
-        console.warn('Invalid saved data. Restoring original places.json.');
-        fc = structuredClone(baseData);
-        saveLocal();
-      }
-    }else{
-      fc = structuredClone(baseData);
-      saveLocal();
-    }
-
-    renderTable();
-    updateStatus();
-    newRecord();
-
-  }catch(e){
-    console.error(e);
-    document.getElementById('status').textContent =
-      'Load failed: ' + e.message;
+   const response=await fetch('./places.json',{cache:'no-store'});
+   if(!response.ok)throw new Error('Could not load places.json');
+   data=await response.json();
+  }catch(fetchError){
+   data={type:'FeatureCollection',features:[]};
   }
+  baseData=normalize(data);
+  loadCategories();
+  const saved=localStorage.getItem(KEY);
+  if(saved){
+   try{fc=normalize(JSON.parse(saved));}
+   catch(e){fc=structuredClone(baseData);saveLocal();}
+  }else{fc=structuredClone(baseData);saveLocal();}
+  renderCategories();
+  renderTable();updateStatus();newRecord();
+ }catch(e){document.getElementById('status').textContent='Load failed: '+e.message;}
 }
-
 function normalize(data){
-  if(!data || data.type !== 'FeatureCollection' || !Array.isArray(data.features)){
-    throw new Error('Invalid GeoJSON');
+ if(!data||data.type!=='FeatureCollection'||!Array.isArray(data.features))throw new Error('Invalid GeoJSON');
+ data.features.forEach((f,i)=>{
+  f.properties=f.properties||{};
+  if(!f.properties.id)f.properties.id='loc-'+String(i+1).padStart(4,'0');
+  if(!f.properties.status)f.properties.status='active';
+ });
+ return data;
+}
+function loadCategories(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(CAT_KEY)||'null');
+  categories=Array.isArray(saved)&&saved.length?saved:structuredClone(DEFAULT_CATEGORIES);
+ }catch(e){categories=structuredClone(DEFAULT_CATEGORIES);}
+ [...new Set(fc.features.map(f=>f.properties?.cat).filter(Boolean))].forEach(v=>{
+  if(!categories.some(c=>c.value===v))categories.push({value:v,label:v});
+ });
+ saveCategories();
+}
+function saveCategories(){localStorage.setItem(CAT_KEY,JSON.stringify(categories));}
+function slugify(s){
+ return s.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'category-'+Date.now();
+}
+function renderCategories(selected){
+ const sel=document.getElementById('cat');
+ const current = selected || (categories.some(c=>c.value===sel.value) ? sel.value : (categories[0]?.value || ''));
+ sel.innerHTML =
+   categories.map(c=>`<option value="${esc(c.value)}">${esc(c.label)}</option>`).join('') +
+   '<option value="__ACTION_NEW__">➕ ADD NEW CATEGORY</option>' +
+   '<option value="__ACTION_DELETE__">🗑 DELETE CATEGORY</option>';
+ if(current){ sel.value=current; sel.dataset.lastCategory=current; }
+ const catlist=document.getElementById('catlist');
+ if(catlist){
+   catlist.innerHTML=categories.map(c=>`<span class="chip">${esc(c.label)}</span>`).join('');
+ }
+}
+function addCategory(){
+ const input=prompt('Enter the new category name:');
+ if(!input || !input.trim()){
+   renderCategories();
+   return;
+ }
+ const label=input.trim();
+ if(categories.some(c=>c.label.toLowerCase()===label.toLowerCase())){
+   alert('This category already exists.');
+   renderCategories();
+   return;
+ }
+ let value=slugify(label);
+ while(categories.some(c=>c.value===value)) value=slugify(label)+'-'+Math.floor(Math.random()*1000);
+ categories.push({value,label});
+ saveCategories();
+ renderCategories(value);
+ alert('New category added successfully.');
+}
+
+function deleteCategory(valueToDelete){
+  // If the user chose "DELETE CATEGORY" from the dropdown,
+  // remember the last real category they had selected.
+  let value = valueToDelete || document.getElementById('cat').dataset.lastCategory;
+
+  // If no custom category is currently selected, ask which custom category to delete.
+  if(!value || !categories.some(c=>c.value===value)){
+    const custom=categories.filter(c=>!DEFAULT_CATEGORIES.some(d=>d.value===c.value));
+    if(!custom.length){
+      renderCategories(categories[0]?.value);
+      alert('There are no custom categories to delete yet.');
+      return;
+    }
+    const choices=custom.map((c,i)=>`${i+1}. ${c.label}`).join('\n');
+    const answer=prompt('Which custom category do you want to delete?\n\n'+choices+'\n\nEnter the number:');
+    if(answer===null){
+      renderCategories(categories[0]?.value);
+      return;
+    }
+    const index=Number(answer)-1;
+    if(!Number.isInteger(index) || !custom[index]){
+      renderCategories(categories[0]?.value);
+      alert('Invalid category number.');
+      return;
+    }
+    value=custom[index].value;
   }
 
-  data.features.forEach((f,i)=>{
-    f.properties = f.properties || {};
-
-    if(!f.properties.id){
-      f.properties.id =
-        'loc-' + String(i+1).padStart(4,'0');
-    }
-
-    if(!f.properties.status){
-      f.properties.status='active';
-    }
-  });
-
-  return data;
-}
-
-function saveLocal(){
-  localStorage.setItem(KEY,JSON.stringify(fc));
-}
-
-function updateStatus(){
-  const active=fc.features.filter(
-    f=>(f.properties.status||'active')==='active'
-  ).length;
-
-  document.getElementById('status').textContent =
-    `Records: ${fc.features.length} | Active: ${active} | Saved in this browser.`;
-}
-
-function esc(x){
-  return String(x??'').replace(
-    /[&<>"]/g,
-    m=>({
-      '&':'&amp;',
-      '<':'&lt;',
-      '>':'&gt;',
-      '"':'&quot;'
-    }[m])
-  );
-}
-
-function find(id){
-  return fc.features.find(
-    f=>String(f.properties.id)===String(id)
-  );
-}
-
-function renderTable(){
-  const q=document.getElementById('search').value.toLowerCase();
-
-  const list=fc.features.filter(f=>{
-    const p=f.properties||{};
-
-    return [
-      p.name,
-      p.address,
-      p.cat
-    ].join(' ').toLowerCase().includes(q);
-  });
-
-  document.getElementById('tbody').innerHTML=list.map(f=>{
-    const p=f.properties||{};
-
-    return `
-      <tr>
-        <td>${esc(p.id)}</td>
-        <td>${esc(p.name)}</td>
-        <td>${esc(p.cat)}</td>
-        <td>${esc(p.address)}</td>
-        <td>${esc(p.status||'active')}</td>
-        <td class="actions">
-          <button
-            type="button"
-            onclick="editRecord('${String(p.id).replace(/'/g,"\\'")}')">
-            Edit
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-}
-
-function newRecord(){
-  document.getElementById('formTitle').textContent='Add Location';
-
-  document.querySelector('form').reset();
-
-  document.getElementById('id').value =
-    'loc-new-'+Date.now();
-
-  document.getElementById('cat').value='culture';
-  document.getElementById('icon').value='📍';
-  document.getElementById('statusField').value='active';
-}
-
-function editRecord(id){
-  const f=find(id);
-
-  if(!f){
-    alert('Record not found. Refresh the page once.');
+  const c=categories.find(x=>x.value===value);
+  if(!c){
+    renderCategories(categories[0]?.value);
+    alert('Category not found.');
     return;
   }
 
-  const p=f.properties||{};
-  const c=f.geometry?.coordinates||[];
-
-  document.getElementById('formTitle').textContent='Edit Location';
-
-  document.getElementById('id').value=p.id||'';
-  document.getElementById('name').value=p.name||'';
-  document.getElementById('address').value=p.address||'';
-  document.getElementById('cat').value=p.cat||'culture';
-  document.getElementById('icon').value=p.icon||'📍';
-
-  document.getElementById('lng').value=c[0]??'';
-  document.getElementById('lat').value=c[1]??'';
-
-  document.getElementById('hours').value=p.hours||'';
-  document.getElementById('statusField').value=p.status||'active';
-  document.getElementById('description').value=p.description||'';
-}
-
-function saveRecord(e){
-  e.preventDefault();
-
-  const id=document.getElementById('id').value;
-
-  const lat=Number(
-    document.getElementById('lat').value
-  );
-
-  const lng=Number(
-    document.getElementById('lng').value
-  );
-
-  if(!document.getElementById('name').value.trim()){
-    alert('Name is required.');
+  // Allow both original and custom categories to be deleted.
+  // If the category is already used by locations, move those locations to
+  // the first remaining category before deleting it so no record is broken.
+  const remainingCategories=categories.filter(x=>x.value!==value);
+  if(!remainingCategories.length){
+    renderCategories(value);
+    alert('At least one category must remain.');
     return;
   }
 
-  if(
-    !Number.isFinite(lat) ||
-    lat<-90 ||
-    lat>90 ||
-    !Number.isFinite(lng) ||
-    lng<-180 ||
-    lng>180
-  ){
-    alert('Please enter valid coordinates.');
-    return;
+  const usedLocations=fc ? fc.features.filter(f=>f.properties?.cat===value) : [];
+  const fallback=remainingCategories[0];
+
+  let message='Delete category "'+c.label+'"?';
+  if(usedLocations.length){
+    message+='\n\n'+usedLocations.length+' location(s) currently use this category. They will be moved to "'+fallback.label+'".';
   }
 
-  const p={
-    id,
-    name:document.getElementById('name').value.trim(),
-    address:document.getElementById('address').value.trim(),
-    hours:document.getElementById('hours').value.trim(),
-    cat:document.getElementById('cat').value,
-    icon:document.getElementById('icon').value.trim()||'📍',
-    status:document.getElementById('statusField').value,
-    description:document.getElementById('description').value.trim()
-  };
-
-  const f={
-    type:'Feature',
-    properties:p,
-    geometry:{
-      type:'Point',
-      coordinates:[lng,lat]
-    }
-  };
-
-  const old=find(id);
-
-  if(old){
-    fc.features[fc.features.indexOf(old)]=f;
-  }else{
-    fc.features.push(f);
-  }
-
-  saveLocal();
-  renderTable();
-  updateStatus();
-  editRecord(id);
-
-  alert('Saved. Open the map to see the updated data.');
-}
-
-function deleteCurrent(){
-  const id=document.getElementById('id').value;
-
-  if(!find(id)) return;
-
-  if(confirm('Delete this location?')){
-    fc.features=fc.features.filter(
-      f=>String(f.properties.id)!==String(id)
-    );
-
-    saveLocal();
-    renderTable();
-    updateStatus();
-    newRecord();
-  }
-}
-
-function exportJSON(){
-  const blob=new Blob(
-    [JSON.stringify(fc,null,2)],
-    {type:'application/json'}
-  );
-
-  const a=document.createElement('a');
-
-  a.href=URL.createObjectURL(blob);
-  a.download='places_updated.json';
-  a.click();
-
-  setTimeout(
-    ()=>URL.revokeObjectURL(a.href),
-    1000
-  );
-}
-
-function importJSON(e){
-  const file=e.target.files[0];
-
-  if(!file) return;
-
-  const r=new FileReader();
-
-  r.onload=()=>{
-    try{
-      fc=normalize(JSON.parse(r.result));
-
+  if(confirm(message)){
+    if(usedLocations.length){
+      usedLocations.forEach(f=>{ f.properties.cat=fallback.value; });
       saveLocal();
-      renderTable();
-      updateStatus();
-      newRecord();
-
-      alert('Imported successfully.');
-
-    }catch(err){
-      alert('Import failed: '+err.message);
     }
-  };
-
-  r.readAsText(file);
-  e.target.value='';
-}
-
-function resetData(){
-  if(confirm('Reset local changes to the original places.json?')){
-    fc=structuredClone(baseData);
-
-    saveLocal();
+    categories=remainingCategories;
+    saveCategories();
+    renderCategories(fallback.value);
     renderTable();
     updateStatus();
-    newRecord();
+    alert('Category deleted successfully.'+(usedLocations.length ? ' Existing locations were moved to "'+fallback.label+'".' : ''));
+  }else{
+    renderCategories(value);
   }
 }
 
+function saveLocal(){localStorage.setItem(KEY,JSON.stringify(fc));}
+function updateStatus(){
+ const active=fc.features.filter(f=>(f.properties.status||'active')==='active').length;
+ document.getElementById('status').textContent=`Records: ${fc.features.length} | Active: ${active} | Saved in this browser.`;
+}
+function esc(x){return String(x??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function find(id){return fc.features.find(f=>String(f.properties.id)===String(id));}
+function renderTable(){
+ const q=document.getElementById('search').value.toLowerCase();
+ const list=fc.features.filter(f=>{
+  const p=f.properties||{};
+  return[p.name,p.address,p.cat].join(' ').toLowerCase().includes(q);
+ });
+ document.getElementById('tbody').innerHTML=list.map(f=>{
+  const p=f.properties||{},cat=categories.find(c=>c.value===p.cat)?.label||p.cat||'';
+  return `<tr><td>${esc(p.id)}</td><td>${esc(p.name)}</td><td>${esc(cat)}</td><td>${esc(p.address)}</td><td>${esc(p.status||'active')}</td><td class="actions"><button type="button" onclick="editRecord('${String(p.id).replace(/'/g,"\\'")}')">Edit</button></td></tr>`;
+ }).join('');
+}
+function newRecord(){
+ document.getElementById('formTitle').textContent='Add Location';
+ document.querySelector('form').reset();
+ document.getElementById('id').value='loc-new-'+Date.now();
+ renderCategories(categories[0]?.value);
+ document.getElementById('icon').value='📍';
+ document.getElementById('statusField').value='active';
+}
+function editRecord(id){
+ const f=find(id);if(!f){alert('Record not found. Refresh once.');return}
+ const p=f.properties||{},c=f.geometry?.coordinates||[];
+ document.getElementById('formTitle').textContent='Edit Location';
+ document.getElementById('id').value=p.id||'';
+ document.getElementById('name').value=p.name||'';
+ document.getElementById('address').value=p.address||'';
+ renderCategories(p.cat||categories[0]?.value);
+ document.getElementById('icon').value=p.icon||'📍';
+ document.getElementById('lng').value=c[0]??'';
+ document.getElementById('lat').value=c[1]??'';
+ document.getElementById('hours').value=p.hours||'';
+ document.getElementById('statusField').value=p.status||'active';
+ document.getElementById('description').value=p.description||'';
+}
+function saveRecord(e){
+ e.preventDefault();
+ const id=document.getElementById('id').value,lat=Number(document.getElementById('lat').value),lng=Number(document.getElementById('lng').value);
+ if(!document.getElementById('name').value.trim()){alert('Name is required.');return}
+ if(!Number.isFinite(lat)||lat<-90||lat>90||!Number.isFinite(lng)||lng<-180||lng>180){alert('Please enter valid coordinates.');return}
+ const p={
+  id,name:document.getElementById('name').value.trim(),
+  address:document.getElementById('address').value.trim(),
+  hours:document.getElementById('hours').value.trim(),
+  cat:document.getElementById('cat').value,
+  icon:document.getElementById('icon').value.trim()||'📍',
+  status:document.getElementById('statusField').value,
+  description:document.getElementById('description').value.trim()
+ };
+ const f={type:'Feature',properties:p,geometry:{type:'Point',coordinates:[lng,lat]}},old=find(id);
+ if(old)fc.features[fc.features.indexOf(old)]=f;else fc.features.push(f);
+ saveLocal();renderTable();updateStatus();editRecord(id);
+ alert('Saved. Open the map to see the updated data.');
+}
+function deleteCurrent(){
+ const id=document.getElementById('id').value;if(!find(id))return;
+ if(confirm('Delete this location?')){
+  fc.features=fc.features.filter(f=>String(f.properties.id)!==String(id));
+  saveLocal();renderTable();updateStatus();newRecord();
+ }
+}
+function exportJSON(){
+ const blob=new Blob([JSON.stringify(fc,null,2)],{type:'application/json'}),a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);a.download='places_updated.json';a.click();
+ setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importJSON(e){
+ const file=e.target.files[0];if(!file)return;
+ const r=new FileReader();
+ r.onload=()=>{
+  try{fc=normalize(JSON.parse(r.result));saveLocal();renderTable();updateStatus();newRecord();alert('Imported successfully.')}
+  catch(err){alert('Import failed: '+err.message)}
+ };
+ r.readAsText(file);e.target.value='';
+}
+function resetData(){
+ if(confirm('Reset local changes to the original places.json?')){
+  fc=structuredClone(baseData);saveLocal();renderTable();updateStatus();newRecord();
+ }
+}
+document.getElementById('cat').addEventListener('change', function(){
+ const value=this.value;
+ if(value==='__ACTION_NEW__'){
+   addCategory();
+   return;
+ }
+ if(value==='__ACTION_DELETE__'){
+   deleteCategory();
+   return;
+ }
+ this.dataset.lastCategory=value;
+});
+const initialCat=document.getElementById('cat');
+if(initialCat && initialCat.value) initialCat.dataset.lastCategory=initialCat.value;
 start();
 </script>
-</body></html>
+</body>
+</html>
