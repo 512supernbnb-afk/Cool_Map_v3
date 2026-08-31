@@ -334,9 +334,15 @@ const CATEGORY_CONFIG = {
     department: { markerClass: 'department', drawerTagClass: 'department', drawerTagLabel: '🏢 百貨公司', clusterClass: 'cluster-department', color: '#d6ae0b' },
 };
 
-const MAP_CENTER  = [23.4800, 120.4500];
-const MAP_ZOOM    = 14;
-const PLACES_URL  = './places.json';
+const MAP_CENTER = [23.4800, 120.4500];
+const MAP_ZOOM = 13;
+const PLACES_URL = './places.json';
+
+// Chiayi City + small surrounding buffer
+const CHIAYI_BOUNDS = L.latLngBounds(
+    [23.40, 120.36],
+    [23.57, 120.55]
+);
 
 let map, userLocation = null;
 let currentCat = 'all', nearestFeature = null;
@@ -414,7 +420,20 @@ fetch(PLACES_URL, { cache: 'no-store' })
 
 /* ── MAP INIT ── */
 function initMap() {
-    map = L.map('map', { zoomControl: false, attributionControl: false }).setView(MAP_CENTER, MAP_ZOOM);
+    map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false,
+
+    // Don't allow the user to zoom out beyond the Chiayi area
+        minZoom: 12,
+
+    // Don't allow dragging outside the Chiayi area
+        maxBounds: CHIAYI_BOUNDS,
+        maxBoundsViscosity: 1.0}).setView(MAP_CENTER, MAP_ZOOM);
+    map.fitBounds(CHIAYI_BOUNDS, {
+        padding: [30, 30],
+        maxZoom: 13
+    });
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
     map.on('click', () => { if (window.innerWidth < 768) closeDrawer(); });
