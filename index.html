@@ -103,6 +103,97 @@
             font-size: 14px;
             cursor: pointer;
         }
+        /* ── SEARCH ── */
+#search-bar {
+    cursor: text;
+}
+
+#search-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+}
+
+#search-input::placeholder {
+    color: var(--text-muted);
+}
+
+#search-results {
+    position: fixed;
+    top: 58px;
+    left: 70px;
+    right: 70px;
+    z-index: 950;
+    max-height: 300px;
+    overflow-y: auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    display: none;
+}
+
+.search-result {
+    padding: 12px 14px;
+    border-bottom: 1px solid #F1F5F9;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-result:last-child {
+    border-bottom: none;
+}
+
+.search-result:hover {
+    background: var(--sky-light);
+}
+
+.search-result-icon {
+    font-size: 20px;
+    width: 30px;
+    text-align: center;
+}
+
+.search-result-info {
+    min-width: 0;
+}
+
+.search-result-name {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-result-address {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-no-result {
+    padding: 15px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 767px) {
+    #search-results {
+        left: 60px;
+        right: 60px;
+    }
+}
 
         #weather-pill {
             height: 44px;
@@ -702,10 +793,17 @@
 <div id="topbar">
     <button id="menu-btn" onclick="openMenu()">☰</button>
 
-    <div id="search-bar" onclick="focusNearest()">
-        <span>🔍</span>
-        <span>搜尋附近文化場所...</span>
-    </div>
+    <div id="search-bar">
+    <span>🔍</span>
+    <input
+        id="search-input"
+        type="text"
+        placeholder="Search for nearby cultural spots..."
+        autocomplete="off"
+    >
+</div>
+
+<div id="search-results"></div>
 
     <div id="weather-pill">
         <span id="w-icon">🌡️</span>
@@ -2678,8 +2776,145 @@ function filterCat(
 
     renderCategoryChips();
     drawMarkers();
-
 }
+    /* ── SEARCH ── */
+
+const searchInput = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+
+function searchPlaces() {
+    if (!PLACES || !Array.isArray(PLACES.features)) return;
+
+    const query = searchInput.value.trim().toLowerCase();
+
+    if (!query) {
+        searchResults.innerHTML = '';
+        searchResults.style.display = 'none';
+        return;
+    }
+
+    const results = PLACES.features.filter(f => {
+        const p = f.properties || {};
+
+        if ((p.status || 'active') === 'inactive') return false;
+
+        const name = String(p.name || '').toLowerCase();
+        const address = String(p.address || '').toLowerCase();
+        const description = String(p.description || '').toLowerCase();
+        const cat = String(p.cat || '').toLowerCase();
+
+        return (
+            name.includes(query) ||
+            address.includes(query) ||
+            description.includes(query) ||
+            cat.includes(query)
+        );
+    }).slice(0, 20);
+
+    if (results.length === 0) {
+        searchResults.innerHTML =
+            '<div class="search-no-result">🔍 No matching location found</div>';
+        searchResults.style.display = 'block';
+        return;
+    }
+
+    searchResults.innerHTML = results.map((f, index) => {
+        const p = f.properties || {};
+
+        return `
+            <div class="search-result" data-search-index="${index}">
+                <div class="search-result-icon">${p.icon || '📍'}</div>
+                <div class="search-result-info">
+                    <div class="search-result-name">
+                        ${escapeSearchText(p.name || 'Unnamed location')}
+                    </div>
+                    <div class="search-result-address">
+                        ${escapeSearchText(p.address || '')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    searchResults._items = results;
+    searchResults.style.display = 'block';
+
+    searchResults.querySelectorAll('.search-result').forEach(item => {
+        item.addEventListener('click', () => {
+            const index = Number(item.dataset.searchIndex);
+            const feature = searchResults._items[index];
+
+            if (!feature) return;
+
+            const [lng, lat] = feature.geometry.coordinates;
+
+            searchResults.style.display = 'none';
+            searchInput.value = feature.properties.name || '';
+
+            map.flyTo(
+                [lat, lng],
+                17,
+                {
+                    animate: true,
+                    duration: 0.8
+                }
+            );
+
+            setTimeout(() => {
+                openDrawer(feature, false);
+            }, 850);
+        });
+    });
+}
+
+function escapeSearchText(text) {
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+if (searchInput) {
+
+    searchInput.addEventListener('input', searchPlaces);
+
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim()) {
+            searchPlaces();
+        }
+    });
+
+    searchInput.addEventListener('keydown', e => {
+
+        if (e.key === 'Escape') {
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            searchResults.style.display = 'none';
+            searchInput.blur();
+        }
+
+        if (e.key === 'Enter') {
+            const firstResult =
+                searchResults.querySelector('.search-result');
+
+            if (firstResult) {
+                firstResult.click();
+            }
+        }
+    });
+}
+
+document.addEventListener('click', e => {
+    if (
+        searchResults &&
+        !searchResults.contains(e.target) &&
+        !searchInput.contains(e.target)
+    ) {
+        searchResults.style.display = 'none';
+    }
+});
 
 
 /* ══════════════════════════════════════════════
