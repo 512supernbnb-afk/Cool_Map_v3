@@ -3102,25 +3102,20 @@ function openDrawer(
 
 
             <button
-                class="btn-nav btn-share"
-                onclick="sharePlace(
-                    ${JSON.stringify(p.name || '')},
-                    ${JSON.stringify(p.address || '')},
-                    ${JSON.stringify(gmapsView)}
-                )"
-            >
-                📤 分享
-            </button>
+    type="button"
+    class="btn-nav btn-share"
+    id="drawer-share-btn"
+>
+    📤 分享
+</button>
 
-
-            <button
-                class="btn-nav btn-copy"
-                onclick="copyAddress(
-                    ${JSON.stringify(p.address || '')}
-                )"
-            >
-                📋 複製地址
-            </button>
+<button
+    type="button"
+    class="btn-nav btn-copy"
+    id="drawer-copy-btn"
+>
+    📋 複製地址
+</button>
 
         </div>
 
@@ -3130,7 +3125,11 @@ function openDrawer(
     document
         .getElementById('drawer')
         .classList.add('open');
-
+    setupDrawerActions(
+    p.name || '',
+    p.address || '',
+    gmapsView
+);
 }
 
 
@@ -3147,118 +3146,139 @@ function closeDrawer() {
    SHARE / COPY
    ══════════════════════════════════════════════ */
 
-async function copyText(
-    text,
-    successMessage
-) {
+async function copyText(text, successMessage) {
+    text = String(text || '');
 
-    try {
-
-        if (
-            navigator.clipboard &&
-            window.isSecureContext
-        ) {
-
-            await navigator.clipboard.writeText(
-                text
-            );
-
-        } else {
-
-            const area =
-                document.createElement('textarea');
-
-            area.value = text;
-            area.setAttribute(
-                'readonly',
-                ''
-            );
-            area.style.position = 'fixed';
-            area.style.left = '-9999px';
-
-            document.body.appendChild(area);
-            area.select();
-
-            const copied =
-                document.execCommand('copy');
-
-            document.body.removeChild(area);
-
-            if (!copied) {
-                throw new Error(
-                    'Clipboard unavailable'
-                );
-            }
-
-        }
-
-        showToast(successMessage);
-
-    } catch (e) {
-
-        showToast(
-            '無法自動複製，請手動複製'
-        );
-
+    if (!text) {
+        showToast('沒有可複製的內容');
+        return;
     }
 
+    try {
+        // Modern clipboard
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            showToast(successMessage);
+            return;
+        }
+
+        // Fallback for HTTP / local environments
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        textarea.setAttribute('readonly', '');
+
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+
+        const success = document.execCommand('copy');
+
+        document.body.removeChild(textarea);
+
+        if (success) {
+            showToast(successMessage);
+        } else {
+            throw new Error('Copy failed');
+        }
+
+    } catch (error) {
+        console.error('Copy error:', error);
+
+        // Last fallback: show the text so user can manually copy
+        showToast('複製失敗，請再試一次');
+    }
 }
 
 
-window.sharePlace =
-    async function(
-        name,
-        address,
-        url
-    ) {
+/* Share current place */
+async function sharePlace(name, address, url) {
 
-        if (
-            navigator.share
-        ) {
+    const shareText =
+        `${name}\n${address}\n${url}`;
 
-            try {
+    // Mobile browsers supporting Web Share
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: name,
+                text: `${name}\n${address}`,
+                url: url
+            });
 
-                await navigator.share({
+            return;
 
-                    title: name,
-
-                    text:
-                        `${name}\n${address}`,
-
-                    url
-
-                });
-
-            } catch (e) {
-
-                /*
-                   User cancelled sharing.
-                */
-
+        } catch (error) {
+            // User cancelled share → do nothing
+            if (error && error.name === 'AbortError') {
+                return;
             }
 
-        } else {
-
-            await copyText(
-                `${name}\n${address}\n${url}`,
-                '已複製分享連結'
-            );
-
+            console.warn('Native share failed:', error);
         }
+    }
 
-    };
+    // Desktop / unsupported browser → copy share information
+    await copyText(
+        shareText,
+        '✅ 分享內容已複製'
+    );
+}
 
 
-window.copyAddress =
-    function(addr) {
+/* Copy address */
+async function copyAddress(address) {
+    await copyText(
+        address,
+        '✅ 地址已複製'
+    );
+}
 
-        copyText(
-            addr,
-            '✅ 地址已複製'
-        );
 
-    };
+/* Make functions available globally */
+window.sharePlace = sharePlace;
+window.copyAddress = copyAddress;
 
+
+/* ══════════════════════════════════════════════
+   DRAWER BUTTON EVENTS
+   ══════════════════════════════════════════════ */
+
+function setupDrawerActions(name, address, url) {
+
+    const shareButton =
+        document.getElementById('drawer-share-btn');
+
+    const copyButton =
+        document.getElementById('drawer-copy-btn');
+
+
+    if (shareButton) {
+        shareButton.onclick = function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            sharePlace(
+                name,
+                address,
+                url
+            );
+        };
+    }
+
+
+    if (copyButton) {
+        copyButton.onclick = function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            copyAddress(address);
+        };
+    }
+}
 
 /* ══════════════════════════════════════════════
    MENU
@@ -3271,9 +3291,7 @@ function openMenu() {
             'menu-panel'
         )
         .classList.add('open');
-
 }
-
 
 function closeMenu() {
 
