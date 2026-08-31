@@ -714,27 +714,7 @@
     </div>
 </div>
 
-<div id="chips-wrap">
-    <button class="chip active" data-cat="all" onclick="filterCat(this,'all')">
-        <span class="chip-icon">🗺️</span> 全部
-    </button>
-
-    <button class="chip" data-cat="culture" onclick="filterCat(this,'culture')">
-        <span class="chip-icon">🏛️</span> 文化場館
-    </button>
-
-    <button class="chip" data-cat="cool" onclick="filterCat(this,'cool')">
-        <span class="chip-icon">❄️</span> 涼適場所
-    </button>
-
-    <button class="chip" data-cat="convenience" onclick="filterCat(this,'convenience')">
-        <span class="chip-icon">🏪</span> 便利商店
-    </button>
-
-    <button class="chip" data-cat="department" onclick="filterCat(this,'department')">
-        <span class="chip-icon">🏢</span> 百貨公司
-    </button>
-</div>
+<div id="chips-wrap"></div>
 
 <div id="gps-bar">📡 正在定位中...</div>
 
@@ -919,6 +899,95 @@ const MAP_CENTER = [23.4800, 120.4500];
 const MAP_ZOOM = 13;
 
 const PLACES_URL = './places.json';
+
+/* ══════════════════════════════════════════════
+   DYNAMIC CATEGORY BUTTONS
+   The Data Manager saves categories in localStorage.
+   The map reads the same list and shows every category
+   here automatically, including newly created ones.
+   ══════════════════════════════════════════════ */
+const CAT_KEY = 'cool_map_categories_v1';
+
+const CATEGORY_UI = {
+    culture:     { icon: '🏛️', label: '文化場館' },
+    cool:        { icon: '❄️', label: '涼適場所' },
+    convenience: { icon: '🏪', label: '便利商店' },
+    department:  { icon: '🏢', label: '百貨公司' }
+};
+
+const DEFAULT_CATEGORY_LIST = [
+    { value: 'culture', label: '文化場館' },
+    { value: 'cool', label: '涼適場所' },
+    { value: 'convenience', label: '便利商店' },
+    { value: 'department', label: '百貨公司' }
+];
+
+function getMapCategories() {
+    let categories = [];
+
+    try {
+        const saved = JSON.parse(localStorage.getItem(CAT_KEY) || 'null');
+        if (Array.isArray(saved)) categories = saved.slice();
+    } catch (e) {}
+
+    // Always keep the four built-in categories.
+    DEFAULT_CATEGORY_LIST.forEach(def => {
+        if (!categories.some(c => c && c.value === def.value)) {
+            categories.push(def);
+        }
+    });
+
+    // Also recover categories directly from location data if needed.
+    if (PLACES && Array.isArray(PLACES.features)) {
+        const existing = new Set(categories.map(c => c && c.value));
+        PLACES.features.forEach(f => {
+            const value = f?.properties?.cat;
+            if (value && !existing.has(value)) {
+                categories.push({ value, label: value });
+                existing.add(value);
+            }
+        });
+    }
+
+    return categories.filter(c => c && c.value && c.label);
+}
+
+function renderCategoryChips() {
+    const wrap = document.getElementById('chips-wrap');
+    if (!wrap) return;
+
+    const categories = getMapCategories();
+    const all = [{ value: 'all', label: '全部', icon: '🗺️' }, ...categories];
+
+    wrap.innerHTML = all.map(c => {
+        const ui = CATEGORY_UI[c.value] || { icon: '🏷️', label: c.label };
+        const icon = c.icon || ui.icon;
+        const label = c.label || ui.label || c.value;
+        const active = currentCat === c.value ? ' active' : '';
+        const valueAttr = escapeHtml(c.value);
+        const labelHtml = escapeHtml(label);
+
+        return `<button class="chip${active}" data-cat="${valueAttr}" onclick="filterCat(this,'${valueAttr}')">` +
+               `<span class="chip-icon">${icon}</span> ${labelHtml}</button>`;
+    }).join('');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#039;',
+        '"': '&quot;'
+    }[m]));
+}
+
+// If the Data Manager adds/deletes a category in another tab,
+// update the buttons immediately without refreshing the page.
+window.addEventListener('storage', event => {
+    if (event.key === CAT_KEY) renderCategoryChips();
+});
+
 
 
 /*
@@ -1424,6 +1493,7 @@ fetch(PLACES_URL, { cache: 'no-store' })
             throw new Error('Invalid places data format');
         }
         PLACES = loadSavedPlaces(data);
+        renderCategoryChips();
         initMap();
     })
     .catch(err => {
@@ -2606,6 +2676,7 @@ function filterCat(
     );
 
 
+    renderCategoryChips();
     drawMarkers();
 
 }
