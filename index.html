@@ -338,11 +338,6 @@ const MAP_CENTER = [23.4800, 120.4500];
 const MAP_ZOOM = 13;
 const PLACES_URL = './places.json';
 
-// Chiayi City + small surrounding buffer
-const CHIAYI_BOUNDS = L.latLngBounds(
-    [23.40, 120.36],
-    [23.57, 120.55]
-);
 
 let map, userLocation = null;
 let currentCat = 'all', nearestFeature = null;
@@ -419,87 +414,89 @@ fetch(PLACES_URL, { cache: 'no-store' })
     });
 
 /* ── MAP INIT ── */
+/* ── MAP INIT ── */
 function initMap() {
     map = L.map('map', {
         zoomControl: false,
-        attributionControl: false,
+        attributionControl: false
+    }).setView(MAP_CENTER, MAP_ZOOM);
 
-    // Don't allow the user to zoom out beyond the Chiayi area
-        minZoom: 12,
-
-    // Don't allow dragging outside the Chiayi area
-        maxBounds: CHIAYI_BOUNDS,
-        maxBoundsViscosity: 1.0}).setView(MAP_CENTER, MAP_ZOOM);
-    map.fitBounds(CHIAYI_BOUNDS, {
-        padding: [30, 30],
-        maxZoom: 13
-    });
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-    map.on('click', () => { if (window.innerWidth < 768) closeDrawer(); });
+
+    L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { attribution: '© OpenStreetMap' }
+    ).addTo(map);
+
+    // ── CHIAYI ONLY VIEW ──
+    // Chiayi area remains visible while zooming out.
+    // The surrounding world map is covered.
+
+    const CHIAYI_VIEW = {
+        north: 23.57,
+        south: 23.40,
+        west: 120.36,
+        east: 120.55
+    };
+
+    // Create a pane above the basemap but below markers.
+    map.createPane('chiayiMaskPane');
+    map.getPane('chiayiMaskPane').style.zIndex = 350;
+
+    const maskStyle = {
+        stroke: false,
+        fill: true,
+        fillColor: '#F0F9FF',
+        fillOpacity: 1,
+        interactive: false,
+        pane: 'chiayiMaskPane'
+    };
+
+    // TOP
+    L.rectangle(
+        [[CHIAYI_VIEW.north, -180], [90, 180]],
+        maskStyle
+    ).addTo(map);
+
+    // BOTTOM
+    L.rectangle(
+        [[-90, -180], [CHIAYI_VIEW.south, 180]],
+        maskStyle
+    ).addTo(map);
+
+    // LEFT
+    L.rectangle(
+        [[CHIAYI_VIEW.south, -180], [CHIAYI_VIEW.north, CHIAYI_VIEW.west]],
+        maskStyle
+    ).addTo(map);
+
+    // RIGHT
+    L.rectangle(
+        [[CHIAYI_VIEW.south, CHIAYI_VIEW.east], [CHIAYI_VIEW.north, 180]],
+        maskStyle
+    ).addTo(map);
+
+    map.on('click', () => {
+        if (window.innerWidth < 768) closeDrawer();
+    });
 
     drawMarkers();
 
-    // Re-render only after the map settles, instead of on every tiny movement.
+    // Re-render only after the map settles.
     map.on('moveend zoomend', scheduleMarkerRedraw);
 
     if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(onLocFound, onLocError, { enableHighAccuracy: true, timeout: 10000 });
+        navigator.geolocation.getCurrentPosition(
+            onLocFound,
+            onLocError,
+            {
+                enableHighAccuracy: true,
+                timeout: 10000
+            }
+        );
     } else {
         setGpsBar('無法使用定位功能', true);
     }
-}
-
-function scheduleMarkerRedraw() {
-    clearTimeout(renderTimer);
-    renderTimer = setTimeout(drawMarkers, 120);
-}
-
-function onLocFound(pos) {
-    const lat = pos.coords.latitude, lng = pos.coords.longitude;
-    userLocation = L.latLng(lat, lng);
-
-    L.circleMarker(userLocation, {
-        radius: 10, fillColor: "#10B981", color: "#fff", weight: 3, fillOpacity: 1
-    }).addTo(map).bindTooltip("你在這裡", { permanent: false, direction: "top" });
-
-    setGpsBar('📍 定位完成', true);
-
-    const filtered = getFiltered();
-    if (filtered.length > 0) {
-        nearestFeature = turf.nearestPoint(
-            turf.point([lng, lat]),
-            { type: 'FeatureCollection', features: filtered }
-        );
-    }
-
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`)
-        .then(r => r.json())
-        .then(d => {
-            document.getElementById('w-icon').textContent = weatherEmoji(d.current_weather.weathercode);
-            document.getElementById('w-temp').textContent = Math.round(d.current_weather.temperature) + '°';
-            document.getElementById('w-temp').style.display = '';
-            document.getElementById('w-loading').style.display = 'none';
-        }).catch(() => { document.getElementById('w-loading').textContent = '--'; });
-}
-
-function onLocError() { setGpsBar('⚠️ 定位失敗，請允許位置存取', true); }
-
-/* ── FILTER ── */
-function getFiltered() {
-    return PLACES.features.filter(f =>
-        (f.properties.status || 'active') !== 'inactive' &&
-        (currentCat === 'all' || f.properties.cat === currentCat)
-    );
-}
-
-/* Only keep locations inside/near the current map viewport. */
-function getVisibleFeatures(features) {
-    const b = map.getBounds().pad(0.20);
-    return features.filter(f => {
-        const [lng, lat] = f.geometry.coordinates;
-        return b.contains([lat, lng]);
-    });
 }
 
 /* ── LOW-ZOOM AGGREGATION ──
