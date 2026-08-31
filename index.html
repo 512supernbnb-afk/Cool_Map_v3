@@ -5,26 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>嘉義涼夏地圖</title>
 
-    <!--
-    ╔══════════════════════════════════════════════════════════════╗
-    ║              嘉義涼夏地圖  維護說明                          ║
-    ╠══════════════════════════════════════════════════════════════╣
-    ║  【新增 / 刪除 / 修改地點】                                  ║
-    ║    → 只需編輯  places.json，不需動此檔案                     ║
-    ║                                                              ║
-    ║  【新增分類】（例如加入「運動中心」）                         ║
-    ║    1. places.json  → 新地點的 cat 欄位填入新分類識別碼       ║
-    ║    2. 此檔 STEP A  → 在 CATEGORY_CONFIG 加一行設定          ║
-    ║    3. 此檔 STEP B  → 在 HTML chips-wrap 加一顆按鈕          ║
-    ║    4. 此檔 STEP C  → 在選單圖例加一行（選用）                ║
-    ║                                                              ║
-    ║  【修改地圖初始位置 / 縮放】                                  ║
-    ║    → 搜尋 MAP_CENTER / MAP_ZOOM 常數                         ║
-    ╚══════════════════════════════════════════════════════════════╝
-    -->
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 
@@ -45,74 +27,176 @@
             --radius: 16px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
 
         body {
             font-family: 'Noto Sans TC', "Microsoft JhengHei", sans-serif;
             background: var(--bg);
-            height: 100vh; height: 100dvh;
+            height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             color: var(--text);
         }
 
-        #map { width: 100%; height: 100%; position: fixed; inset: 0; }
+        #map {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            inset: 0;
+        }
 
         /* ── TOP BAR ── */
         #topbar {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 900;
             padding: 12px 16px;
-            display: flex; align-items: center; gap: 10px;
-            background: linear-gradient(180deg, rgba(240,249,255,0.98) 70%, transparent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(
+                180deg,
+                rgba(240,249,255,0.98) 70%,
+                transparent
+            );
             pointer-events: none;
         }
-        #topbar > * { pointer-events: all; }
+
+        #topbar > * {
+            pointer-events: all;
+        }
 
         #menu-btn {
-            width: 44px; height: 44px; background: var(--surface); border: none;
-            border-radius: 12px; box-shadow: var(--shadow); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; flex-shrink: 0; color: var(--sky-dark);
+            width: 44px;
+            height: 44px;
+            background: var(--surface);
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            color: var(--sky-dark);
         }
+
         #search-bar {
-            flex: 1; height: 44px; background: var(--surface); border-radius: 12px;
-            box-shadow: var(--shadow); display: flex; align-items: center;
-            padding: 0 14px; gap: 8px; color: var(--text-muted); font-size: 14px; cursor: pointer;
+            flex: 1;
+            height: 44px;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 14px;
+            cursor: pointer;
         }
+
         #weather-pill {
-            height: 44px; background: var(--surface); border-radius: 12px;
-            box-shadow: var(--shadow); display: flex; align-items: center;
-            padding: 0 12px; gap: 4px; flex-shrink: 0;
+            height: 44px;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 4px;
+            flex-shrink: 0;
         }
-        #w-icon { font-size: 22px; line-height: 1; }
-        #w-temp { font-size: 16px; font-weight: 700; color: var(--text); }
-        #w-loading { font-size: 12px; color: var(--text-muted); }
+
+        #w-icon {
+            font-size: 22px;
+            line-height: 1;
+        }
+
+        #w-temp {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        #w-loading {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
 
         /* ── CHIPS ── */
         #chips-wrap {
-            position: fixed; top: 68px; left: 0; right: 0; z-index: 890;
-            padding: 0 16px; overflow-x: auto; display: flex; gap: 8px;
-            scrollbar-width: none; pointer-events: none;
+            position: fixed;
+            top: 68px;
+            left: 0;
+            right: 0;
+            z-index: 890;
+            padding: 0 16px;
+            overflow-x: auto;
+            display: flex;
+            gap: 8px;
+            scrollbar-width: none;
+            pointer-events: none;
         }
-        #chips-wrap > * { pointer-events: all; }
-        #chips-wrap::-webkit-scrollbar { display: none; }
+
+        #chips-wrap > * {
+            pointer-events: all;
+        }
+
+        #chips-wrap::-webkit-scrollbar {
+            display: none;
+        }
+
         .chip {
-            height: 34px; padding: 0 14px; border-radius: 100px; border: none;
-            background: var(--surface); box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            font-size: 13px; font-family: inherit; font-weight: 500; color: var(--text-muted);
-            cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px;
+            height: 34px;
+            padding: 0 14px;
+            border-radius: 100px;
+            border: none;
+            background: var(--surface);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 13px;
+            font-family: inherit;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
             transition: all 0.2s;
         }
-        .chip.active { background: var(--sky-dark); color: white; box-shadow: 0 4px 14px rgba(3,105,161,0.35); }
-        .chip .chip-icon { font-size: 15px; }
 
-        /* ── CUSTOM CLUSTER ── */
+        .chip.active {
+            background: var(--sky-dark);
+            color: white;
+            box-shadow: 0 4px 14px rgba(3,105,161,0.35);
+        }
+
+        .chip .chip-icon {
+            font-size: 15px;
+        }
+
+        /* ── CLUSTERS ── */
         .ccluster-outer {
             border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
         .ccluster-inner {
             border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-family: 'Noto Sans TC', "Microsoft JhengHei", sans-serif;
             font-weight: 700;
             color: white;
@@ -121,146 +205,508 @@
 
         /* ── DRAWER ── */
         #drawer {
-            position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
-            background: var(--surface); border-radius: 20px 20px 0 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: var(--surface);
+            border-radius: 20px 20px 0 0;
             box-shadow: 0 -8px 40px rgba(0,0,0,0.15);
             transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-            max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;
+            transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
-        #drawer.open { transform: translateY(0); }
-        #drawer-handle { width: 40px; height: 4px; background: #CBD5E1; border-radius: 2px; margin: 12px auto 0; flex-shrink: 0; }
+
+        #drawer.open {
+            transform: translateY(0);
+        }
+
+        #drawer-handle {
+            width: 40px;
+            height: 4px;
+            background: #CBD5E1;
+            border-radius: 2px;
+            margin: 12px auto 0;
+            flex-shrink: 0;
+        }
+
         #drawer-close {
-            position: absolute; top: 10px; right: 16px; width: 32px; height: 32px;
-            border-radius: 50%; background: #F1F5F9; border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text-muted);
+            position: absolute;
+            top: 10px;
+            right: 16px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #F1F5F9;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--text-muted);
         }
-        #drawer-content { padding: 16px 20px 32px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+        #drawer-content {
+            padding: 16px 20px 32px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
 
         .drawer-tag {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; margin-bottom: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
         }
-        .drawer-tag.culture     { background: #DBEAFE; color: #1D4ED8; }
-        .drawer-tag.cool        { background: #CCFBF1; color: #0F766E; }
-        .drawer-tag.convenience { background: #FFEDD5; color: #C2410C; }
-        .drawer-tag.nearest     { background: #FEE2E2; color: #DC2626; }
 
-        .drawer-name { font-size: 20px; font-weight: 900; color: var(--text); line-height: 1.3; margin-bottom: 4px; }
-        .drawer-address { font-size: 14px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+        .drawer-tag.culture {
+            background: #DBEAFE;
+            color: #1D4ED8;
+        }
+
+        .drawer-tag.cool {
+            background: #CCFBF1;
+            color: #0F766E;
+        }
+
+        .drawer-tag.convenience {
+            background: #FFEDD5;
+            color: #C2410C;
+        }
+
+        .drawer-tag.department {
+            background: #FEF3C7;
+            color: #A16207;
+        }
+
+        .drawer-tag.nearest {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .drawer-name {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--text);
+            line-height: 1.3;
+            margin-bottom: 4px;
+        }
+
+        .drawer-address {
+            font-size: 14px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
         .drawer-hours {
-            background: var(--sky-light); border-radius: 12px; padding: 12px 14px;
-            margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start;
+            background: var(--sky-light);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
         }
-        .drawer-hours-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-        .drawer-hours-text { font-size: 13px; color: var(--sky-dark); line-height: 1.6; }
-        .drawer-hours-label { font-weight: 700; font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
-        .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .drawer-hours-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .drawer-hours-text {
+            font-size: 13px;
+            color: var(--sky-dark);
+            line-height: 1.6;
+        }
+
+        .drawer-hours-label {
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .drawer-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
         .btn-nav {
-            padding: 14px; border-radius: var(--radius); border: none; cursor: pointer;
-            font-family: inherit; font-size: 15px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s;
+            padding: 14px;
+            border-radius: var(--radius);
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.15s;
         }
-        .btn-nav:active { transform: scale(0.97); }
-        .btn-gmaps { background: var(--sky-dark); color: white; grid-column: span 2; padding: 16px; font-size: 16px; }
-        .btn-gmaps::before { content: "🗺️"; font-size: 18px; }
-        .btn-share { background: var(--sky-light); color: var(--sky-dark); }
-        .btn-copy  { background: #F1F5F9; color: var(--text); }
+
+        .btn-gmaps {
+            background: var(--sky-dark);
+            color: white;
+            grid-column: span 2;
+            padding: 16px;
+            font-size: 16px;
+        }
+
+        .btn-gmaps::before {
+            content: "🗺️";
+            font-size: 18px;
+        }
+
+        .btn-share {
+            background: var(--sky-light);
+            color: var(--sky-dark);
+        }
+
+        .btn-copy {
+            background: #F1F5F9;
+            color: var(--text);
+        }
 
         /* ── MENU ── */
-        #menu-panel { position: fixed; inset: 0; z-index: 1100; display: none; }
-        #menu-panel.open { display: block; }
-        #menu-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(2px); }
+        #menu-panel {
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            display: none;
+        }
+
+        #menu-panel.open {
+            display: block;
+        }
+
+        #menu-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(2px);
+        }
+
         #menu-sheet {
-            position: absolute; top: 0; left: 0; bottom: 0;
-            width: min(300px, 85vw); background: var(--surface);
-            padding: 56px 24px 40px; overflow-y: auto;
-            animation: slideIn 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: min(300px,85vw);
+            background: var(--surface);
+            padding: 56px 24px 40px;
+            overflow-y: auto;
+            animation: slideIn 0.3s cubic-bezier(0.32,0.72,0,1);
         }
-        @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-        .menu-logo { margin-bottom: 24px; }
-        .menu-logo-title { font-size: 22px; font-weight: 900; color: var(--sky-dark); line-height: 1.2; }
-        .menu-logo-sub   { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-        .menu-section-title { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin: 20px 0 10px; }
-        .menu-how { background: var(--sky-light); border-radius: 12px; padding: 14px; }
-        .menu-how-item { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--sky-dark); padding: 5px 0; }
-        .menu-how-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-        .menu-how-item:not(:last-child) { border-bottom: 1px solid rgba(14,165,233,0.15); padding-bottom: 10px; margin-bottom: 5px; }
-        .menu-legend-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text); border-bottom: 1px solid #F1F5F9; }
-        .legend-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
-        .legend-dot.culture     { background: var(--sky-dark); color: white; }
-        .legend-dot.cool        { background: var(--green); color: white; }
-        .legend-dot.convenience { background: #F97316; color: white; }
-        .legend-dot.nearest     { background: var(--red); color: white; }
-        .legend-dot.user        { background: var(--green); color: white; border: 2px solid white; box-shadow: 0 0 0 2px var(--green); }
-        .menu-partner { background: linear-gradient(135deg, #0EA5E9, #06B6D4); border-radius: 12px; padding: 14px; color: white; font-size: 12px; line-height: 1.6; margin-top: 8px; }
-        .menu-partner strong { font-size: 13px; display: block; margin-bottom: 4px; }
 
-        /* ── GPS BAR ── */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+
+        .menu-logo {
+            margin-bottom: 24px;
+        }
+
+        .menu-logo-title {
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--sky-dark);
+            line-height: 1.2;
+        }
+
+        .menu-logo-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .menu-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin: 20px 0 10px;
+        }
+
+        .menu-how {
+            background: var(--sky-light);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .menu-how-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            font-size: 13px;
+            color: var(--sky-dark);
+            padding: 5px 0;
+        }
+
+        .menu-how-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .menu-how-item:not(:last-child) {
+            border-bottom: 1px solid rgba(14,165,233,0.15);
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        .menu-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            font-size: 13px;
+            color: var(--text);
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+        .legend-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .legend-dot.culture {
+            background: var(--sky-dark);
+            color: white;
+        }
+
+        .legend-dot.cool {
+            background: var(--green);
+            color: white;
+        }
+
+        .legend-dot.convenience {
+            background: #F97316;
+            color: white;
+        }
+
+        .legend-dot.department {
+            background: #d6ae0b;
+            color: white;
+        }
+
+        .legend-dot.user {
+            background: var(--green);
+            color: white;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px var(--green);
+        }
+
+        .menu-partner {
+            background: linear-gradient(135deg,#0EA5E9,#06B6D4);
+            border-radius: 12px;
+            padding: 14px;
+            color: white;
+            font-size: 12px;
+            line-height: 1.6;
+            margin-top: 8px;
+        }
+
+        .menu-partner strong {
+            font-size: 13px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* ── GPS ── */
         #gps-bar {
-            position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%); z-index: 800;
-            background: rgba(30, 41, 59, 0.88); color: white; padding: 8px 18px;
-            border-radius: 100px; font-size: 13px; backdrop-filter: blur(8px);
-            display: flex; align-items: center; gap: 6px; transition: opacity 0.5s; white-space: nowrap;
+            position: fixed;
+            bottom: 88px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 800;
+            background: rgba(30,41,59,0.88);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 13px;
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.5s;
+            white-space: nowrap;
         }
-        #gps-bar.hidden { opacity: 0; pointer-events: none; }
 
-        /* ── MY LOCATION BTN ── */
+        #gps-bar.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ── MY LOCATION ── */
         #my-location-btn {
-            position: fixed; bottom: 40px; right: 16px; z-index: 800;
-            width: 48px; height: 48px; background: var(--surface); border: none;
-            border-radius: 14px; box-shadow: var(--shadow); cursor: pointer;
-            display: flex; align-items: center; justify-content: center; font-size: 22px;
+            position: fixed;
+            bottom: 40px;
+            right: 16px;
+            z-index: 800;
+            width: 48px;
+            height: 48px;
+            background: var(--surface);
+            border: none;
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
         }
 
-        /* ── CUSTOM MARKERS ── */
-        .cmarker { display: flex; flex-direction: column; align-items: center; }
-        .cmarker-pin {
-            width: 38px; height: 38px; border-radius: 50% 50% 50% 4px; transform: rotate(-45deg);
-            background: var(--sky-dark); border: 3px solid white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-            display: flex; align-items: center; justify-content: center;
+        /* ── MARKERS ── */
+        .cmarker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .cmarker-pin-inner { transform: rotate(45deg); font-size: 15px; }
-        .cmarker.cool        .cmarker-pin { background: var(--green); }
-        .cmarker.convenience .cmarker-pin { background: var(--orange); }
-        .cmarker.nearest     .cmarker-pin { background: var(--red); box-shadow: 0 4px 16px rgba(239,68,68,0.4); transform: rotate(-45deg) scale(1.2); }
+
+        .cmarker-pin {
+            width: 38px;
+            height: 38px;
+            border-radius: 50% 50% 50% 4px;
+            transform: rotate(-45deg);
+            background: var(--sky-dark);
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cmarker-pin-inner {
+            transform: rotate(45deg);
+            font-size: 15px;
+        }
+
+        .cmarker.cool .cmarker-pin {
+            background: var(--green);
+        }
+
+        .cmarker.convenience .cmarker-pin {
+            background: var(--orange);
+        }
+
+        .cmarker.department .cmarker-pin {
+            background: #d6ae0b;
+        }
+
+        .cmarker.nearest .cmarker-pin {
+            background: var(--red);
+            box-shadow: 0 4px 16px rgba(239,68,68,0.4);
+            transform: rotate(-45deg) scale(1.2);
+        }
+
         .cmarker-label {
-            background: white; padding: 2px 7px; border-radius: 6px;
-            font-size: 11px; font-weight: 700; color: var(--text); margin-top: 4px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.12); white-space: nowrap;
-            max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+            background: white;
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            white-space: nowrap;
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* ── LEAFLET ── */
-        .leaflet-popup-content-wrapper { border-radius: var(--radius) !important; box-shadow: var(--shadow) !important; padding: 0 !important; }
-        .leaflet-popup-content { margin: 0 !important; width: 240px !important; }
-        .leaflet-popup-tip-container { display: none; }
-        .leaflet-control-zoom { border-radius: 12px !important; overflow: hidden; }
-        .leaflet-control-zoom a { width: 36px !important; height: 36px !important; line-height: 36px !important; }
-        .leaflet-bottom.leaflet-right { bottom: 100px !important; right: 70px !important; }
+        .leaflet-popup-content-wrapper {
+            border-radius: var(--radius) !important;
+            box-shadow: var(--shadow) !important;
+            padding: 0 !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 0 !important;
+            width: 240px !important;
+        }
+
+        .leaflet-popup-tip-container {
+            display: none;
+        }
+
+        .leaflet-control-zoom {
+            border-radius: 12px !important;
+            overflow: hidden;
+        }
+
+        .leaflet-control-zoom a {
+            width: 36px !important;
+            height: 36px !important;
+            line-height: 36px !important;
+        }
+
+        .leaflet-bottom.leaflet-right {
+            bottom: 100px !important;
+            right: 70px !important;
+        }
 
         /* ── TOAST ── */
         #toast {
-            position: fixed; bottom: 120px; left: 50%;
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
             transform: translateX(-50%) translateY(20px);
-            background: #1E293B; color: white; padding: 10px 20px;
-            border-radius: 100px; font-size: 13px; z-index: 2000;
-            opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap;
+            background: #1E293B;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 100px;
+            font-size: 13px;
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
         }
-        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
+
 <body>
 
 <div id="map"></div>
 
 <div id="topbar">
     <button id="menu-btn" onclick="openMenu()">☰</button>
+
     <div id="search-bar" onclick="focusNearest()">
         <span>🔍</span>
         <span>搜尋附近文化場所...</span>
     </div>
+
     <div id="weather-pill">
         <span id="w-icon">🌡️</span>
         <span id="w-temp" style="display:none"></span>
@@ -268,468 +714,2067 @@
     </div>
 </div>
 
-<!-- ★ STEP B：新增分類時在此加一顆 <button> -->
 <div id="chips-wrap">
-    <button class="chip active" data-cat="all"         onclick="filterCat(this,'all')">        <span class="chip-icon">🗺️</span> 全部      </button>
-    <button class="chip"        data-cat="culture"     onclick="filterCat(this,'culture')">    <span class="chip-icon">🏛️</span> 文化場館  </button>
-    <button class="chip"        data-cat="cool"        onclick="filterCat(this,'cool')">       <span class="chip-icon">❄️</span> 涼適場所  </button>
-    <button class="chip"        data-cat="convenience" onclick="filterCat(this,'convenience')"><span class="chip-icon">🏪</span> 便利商店  </button>
-    <button class="chip"        data-cat="department"   onclick="filterCat(this,'department')"><span class="chip-icon">🏢</span> 百貨公司  </button>
+    <button class="chip active" data-cat="all" onclick="filterCat(this,'all')">
+        <span class="chip-icon">🗺️</span> 全部
+    </button>
+
+    <button class="chip" data-cat="culture" onclick="filterCat(this,'culture')">
+        <span class="chip-icon">🏛️</span> 文化場館
+    </button>
+
+    <button class="chip" data-cat="cool" onclick="filterCat(this,'cool')">
+        <span class="chip-icon">❄️</span> 涼適場所
+    </button>
+
+    <button class="chip" data-cat="convenience" onclick="filterCat(this,'convenience')">
+        <span class="chip-icon">🏪</span> 便利商店
+    </button>
+
+    <button class="chip" data-cat="department" onclick="filterCat(this,'department')">
+        <span class="chip-icon">🏢</span> 百貨公司
+    </button>
 </div>
 
 <div id="gps-bar">📡 正在定位中...</div>
-<button id="my-location-btn" onclick="goToUser()" title="回到我的位置">📍</button>
+
+<button id="my-location-btn"
+        onclick="goToUser()"
+        title="回到我的位置">
+    📍
+</button>
+
 <div id="toast"></div>
 
 <div id="drawer">
     <div id="drawer-handle"></div>
-    <button id="drawer-close" onclick="closeDrawer()">✕</button>
+
+    <button id="drawer-close" onclick="closeDrawer()">
+        ✕
+    </button>
+
     <div id="drawer-content"></div>
 </div>
 
 <div id="menu-panel">
+
     <div id="menu-overlay" onclick="closeMenu()"></div>
+
     <div id="menu-sheet">
+
         <div class="menu-logo">
-            <div class="menu-logo-title">🌿 嘉義涼夏地圖</div>
-            <div class="menu-logo-sub"> 嘉義市環保局 ✕ 國立中正大學 </div>
+            <div class="menu-logo-title">
+                🌿 嘉義涼夏地圖
+            </div>
+
+            <div class="menu-logo-sub">
+                嘉義市環保局 ✕ 國立中正大學
+            </div>
         </div>
-        <div class="menu-section-title">使用說明</div>
+
+        <div class="menu-section-title">
+            使用說明
+        </div>
+
         <div class="menu-how">
-            <div class="menu-how-item"><span class="menu-how-icon">📍</span><span>開啟 App 自動定位，顯示你目前的位置</span></div>
-            <div class="menu-how-item"><span class="menu-how-icon">🔵</span><span>縮小地圖時，圓圈數字代表該區域的場所數量，放大即可看到個別地點</span></div>
-            <div class="menu-how-item"><span class="menu-how-icon">👆</span><span>點擊地圖上的圖標，查看場所詳細資訊</span></div>
-            <div class="menu-how-item"><span class="menu-how-icon">🗺️</span><span>按「Google 地圖導航」跳轉至 Google Maps 開始導航</span></div>
-            <div class="menu-how-item"><span class="menu-how-icon">❄️</span><span>切換「涼適場所」分類，找到環保局推薦的避暑地點</span></div>
+
+            <div class="menu-how-item">
+                <span class="menu-how-icon">📍</span>
+                <span>開啟 App 自動定位，顯示你目前的位置</span>
+            </div>
+
+            <div class="menu-how-item">
+                <span class="menu-how-icon">🔵</span>
+                <span>縮小地圖時，圓圈數字代表該區域的場所數量，放大即可看到個別地點</span>
+            </div>
+
+            <div class="menu-how-item">
+                <span class="menu-how-icon">👆</span>
+                <span>點擊地圖上的圖標，查看場所詳細資訊</span>
+            </div>
+
+            <div class="menu-how-item">
+                <span class="menu-how-icon">🗺️</span>
+                <span>按「Google 地圖導航」跳轉至 Google Maps 開始導航</span>
+            </div>
+
+            <div class="menu-how-item">
+                <span class="menu-how-icon">❄️</span>
+                <span>切換「涼適場所」分類，找到環保局推薦的避暑地點</span>
+            </div>
+
         </div>
-        <!-- ★ STEP C：新增分類時在此加一行圖例 -->
-        <div class="menu-section-title">圖例說明</div>
-        <div class="menu-legend-item"><div class="legend-dot culture">🏛️</div><span>文化場館（圖書館、美術館等）</span></div>
-        <div class="menu-legend-item"><div class="legend-dot cool">❄️</div><span>涼適場所（環保局認定）</span></div>
-        <div class="menu-legend-item"><div class="legend-dot convenience">🏪</div><span>便利商店（7-ELEVEN / 全家）</span></div>
-        <div class="menu-legend-item"><div class="legend-dot department">🏢</div><span>百貨公司</span></div>
-        <div class="menu-legend-item"><div class="legend-dot user">●</div><span>你目前的位置</span></div>
-        <div class="menu-section-title">資料管理</div>
-        <div class="menu-partner"><a href="data_manager.html" style="display:block;text-decoration:none;color:#0369A1;font-weight:700;">🛠️ 開啟地點資料管理工具</a><div style="margin-top:6px;color:#64748B;font-size:12px;">可新增、修改、停用與匯出地點，不需要編輯程式碼。</div></div>
-        <div class="menu-section-title">關於</div>
+
+        <div class="menu-section-title">
+            圖例說明
+        </div>
+
+        <div class="menu-legend-item">
+            <div class="legend-dot culture">🏛️</div>
+            <span>文化場館（圖書館、美術館等）</span>
+        </div>
+
+        <div class="menu-legend-item">
+            <div class="legend-dot cool">❄️</div>
+            <span>涼適場所（環保局認定）</span>
+        </div>
+
+        <div class="menu-legend-item">
+            <div class="legend-dot convenience">🏪</div>
+            <span>便利商店（7-ELEVEN / 全家）</span>
+        </div>
+
+        <div class="menu-legend-item">
+            <div class="legend-dot department">🏢</div>
+            <span>百貨公司</span>
+        </div>
+
+        <div class="menu-legend-item">
+            <div class="legend-dot user">●</div>
+            <span>你目前的位置</span>
+        </div>
+
+        <div class="menu-section-title">
+            資料管理
+        </div>
+
+        <div class="menu-partner">
+            <a href="data_manager.html"
+               style="display:block;text-decoration:none;color:#0369A1;font-weight:700;">
+                🛠️ 開啟地點資料管理工具
+            </a>
+
+            <div style="margin-top:6px;color:#64748B;font-size:12px;">
+                可新增、修改、停用與匯出地點，不需要編輯程式碼。
+            </div>
+        </div>
+
+        <div class="menu-section-title">
+            關於
+        </div>
+
         <div class="menu-partner">
             <strong>🤝 合作夥伴</strong>
+
             本地圖由嘉義市政府提供文藝場所資料及以認證之涼適場所資料，共同推動市民在夏日享受藝文與清涼生活。
         </div>
+
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
 <script>
 
 /* ══════════════════════════════════════════════
-   ★ STEP A：新增分類時在此加一行
+   CATEGORY CONFIG
    ══════════════════════════════════════════════ */
+
 const CATEGORY_CONFIG = {
-    culture:     { markerClass: 'culture',     drawerTagClass: 'culture',     drawerTagLabel: '🏛️ 文化場館', clusterClass: 'cluster-culture',     color: '#0369A1' },
-    cool:        { markerClass: 'cool',        drawerTagClass: 'cool',        drawerTagLabel: '❄️ 涼適場所', clusterClass: 'cluster-cool',        color: '#10B981' },
-    convenience: { markerClass: 'convenience', drawerTagClass: 'convenience', drawerTagLabel: '🏪 便利商店', clusterClass: 'cluster-convenience', color: '#F97316' },
-    department: { markerClass: 'department', drawerTagClass: 'department', drawerTagLabel: '🏢 百貨公司', clusterClass: 'cluster-department', color: '#d6ae0b' },
+
+    culture: {
+        markerClass: 'culture',
+        drawerTagClass: 'culture',
+        drawerTagLabel: '🏛️ 文化場館',
+        clusterClass: 'cluster-culture',
+        color: '#0369A1'
+    },
+
+    cool: {
+        markerClass: 'cool',
+        drawerTagClass: 'cool',
+        drawerTagLabel: '❄️ 涼適場所',
+        clusterClass: 'cluster-cool',
+        color: '#10B981'
+    },
+
+    convenience: {
+        markerClass: 'convenience',
+        drawerTagClass: 'convenience',
+        drawerTagLabel: '🏪 便利商店',
+        clusterClass: 'cluster-convenience',
+        color: '#F97316'
+    },
+
+    department: {
+        markerClass: 'department',
+        drawerTagClass: 'department',
+        drawerTagLabel: '🏢 百貨公司',
+        clusterClass: 'cluster-department',
+        color: '#d6ae0b'
+    }
+
 };
 
+
+/* ══════════════════════════════════════════════
+   MAP SETTINGS
+   ══════════════════════════════════════════════ */
+
 const MAP_CENTER = [23.4800, 120.4500];
+
 const MAP_ZOOM = 13;
+
 const PLACES_URL = './places.json';
 
 
-let map, userLocation = null;
-let currentCat = 'all', nearestFeature = null;
+/*
+   IMPORTANT:
+
+   This is the visual Chiayi area.
+
+   We DO NOT use minZoom here.
+
+   That means the user can continuously zoom out.
+
+   When zooming out:
+   Chiayi becomes smaller,
+   while everything outside Chiayi stays covered.
+*/
+
+const CHIAYI_VIEW = {
+
+    north: 23.57,
+
+    south: 23.40,
+
+    west: 120.36,
+
+    east: 120.55
+
+};
+
+
+/* ══════════════════════════════════════════════
+   GLOBAL VARIABLES
+   ══════════════════════════════════════════════ */
+
+let map = null;
+
+let userLocation = null;
+
+let currentCat = 'all';
+
+let nearestFeature = null;
+
 let PLACES = null;
+
 let clusterGroup = null;
+
 let renderTimer = null;
 
 const STORAGE_KEY = 'cool_map_places_v1';
+
 const MAX_DETAIL_MARKERS = 3000;
 
-/* ── LOAD DATA ── */
+
+/* ══════════════════════════════════════════════
+   LOAD DATA
+   ══════════════════════════════════════════════ */
+
 function normalizePlaces(data) {
-    if (!data || !Array.isArray(data.features)) throw new Error('Invalid places.json format');
+
+    if (
+        !data ||
+        !Array.isArray(data.features)
+    ) {
+        throw new Error('Invalid places.json format');
+    }
+
     data.features.forEach((f, i) => {
-        if (!f.properties) f.properties = {};
-        if (!f.properties.id) f.properties.id = 'loc-' + String(i + 1).padStart(4, '0');
-        if (!f.properties.status) f.properties.status = 'active';
+
+        if (!f.properties) {
+            f.properties = {};
+        }
+
+        if (!f.properties.id) {
+
+            f.properties.id =
+                'loc-' +
+                String(i + 1).padStart(4, '0');
+
+        }
+
+        if (!f.properties.status) {
+
+            f.properties.status = 'active';
+
+        }
+
     });
+
     return data;
 }
 
+
 function loadSavedPlaces(data) {
+
     try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) return normalizePlaces(JSON.parse(saved));
+
+        const saved =
+            localStorage.getItem(STORAGE_KEY);
+
+        if (saved) {
+
+            return normalizePlaces(
+                JSON.parse(saved)
+            );
+
+        }
+
     } catch (e) {
-        console.warn('Saved location data could not be loaded:', e);
+
+        console.warn(
+            'Saved location data could not be loaded:',
+            e
+        );
+
     }
+
     return normalizePlaces(data);
 }
 
+
+/* ══════════════════════════════════════════════
+   DATA MANAGER → MAP SYNC
+   ══════════════════════════════════════════════ */
+
 function refreshMapFromSavedData() {
+
     try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+
+        const saved =
+            localStorage.getItem(STORAGE_KEY);
+
         if (!saved) return;
-        const updated = normalizePlaces(JSON.parse(saved));
+
+        const updated =
+            normalizePlaces(
+                JSON.parse(saved)
+            );
+
         PLACES = updated;
+
         drawMarkers();
+
     } catch (e) {
-        console.warn('Could not refresh map from saved data:', e);
+
+        console.warn(
+            'Could not refresh map from saved data:',
+            e
+        );
+
     }
+
 }
 
-// Keep the map synchronized with Data Manager changes in another tab/window.
-window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY && event.newValue) {
-        refreshMapFromSavedData();
+
+/*
+   If Data Manager is open in another tab,
+   browser storage event updates the map.
+*/
+
+window.addEventListener(
+    'storage',
+    function(event) {
+
+        if (
+            event.key === STORAGE_KEY &&
+            event.newValue
+        ) {
+
+            refreshMapFromSavedData();
+
+            showToast('✅ 地點資料已更新');
+
+        }
+
     }
+);
+
+
+/*
+   Periodic check keeps prototype synchronized.
+*/
+
+setInterval(
+    refreshMapFromSavedData,
+    1000
+);
+
+
+/* ══════════════════════════════════════════════
+   LOAD PLACES.JSON
+   ══════════════════════════════════════════════ */
+
+fetch(
+    PLACES_URL,
+    {
+        cache: 'no-store'
+    }
+)
+
+.then(response => {
+
+    if (!response.ok) {
+
+        throw new Error(
+            'Could not load places.json'
+        );
+
+    }
+
+    return response.json();
+
+})
+
+.then(data => {
+
+    if (
+        !data ||
+        !Array.isArray(data.features)
+    ) {
+
+        throw new Error(
+            'Invalid places.json format'
+        );
+
+    }
+
+    PLACES =
+        loadSavedPlaces(data);
+
+    initMap();
+
+})
+
+.catch(err => {
+
+    console.error(err);
+
+    document.body.innerHTML = `
+
+        <div style="
+            padding:40px;
+            font-family:sans-serif;
+            color:#c00;
+        ">
+
+            <h2>
+                ⚠️ Location data failed to load
+            </h2>
+
+            <p style="margin-top:12px">
+                ${err.message}
+            </p>
+
+        </div>
+
+    `;
+
 });
 
-// Also check periodically so the prototype remains synchronized even when
-// browser storage events are not delivered as expected.
-setInterval(refreshMapFromSavedData, 1000);
 
-fetch(PLACES_URL, { cache: 'no-store' })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Could not load places.json');
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (!data || !Array.isArray(data.features)) {
-            throw new Error('Invalid places.json format');
-        }
-        PLACES = loadSavedPlaces(data);
-        initMap();
-    })
-    .catch(err => {
-        document.body.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#c00">
-            <h2>⚠️ Location data failed to load</h2>
-            <p style="margin-top:12px">${err.message}</p>
-        </div>`;
-    });
+/* ══════════════════════════════════════════════
+   MAP INITIALIZATION
+   ══════════════════════════════════════════════ */
 
-/* ── MAP INIT ── */
-/* ── MAP INIT ── */
 function initMap() {
-    map = L.map('map', {
-        zoomControl: false,
-        attributionControl: false
-    }).setView(MAP_CENTER, MAP_ZOOM);
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    map = L.map(
+        'map',
+        {
+            zoomControl: false,
+
+            attributionControl: false,
+
+            /*
+               Allow zooming out.
+               We intentionally do NOT set minZoom.
+            */
+        }
+    );
+
+    /*
+       Start with Chiayi filling the screen.
+    */
+
+    map.fitBounds(
+        [
+            [CHIAYI_VIEW.south, CHIAYI_VIEW.west],
+            [CHIAYI_VIEW.north, CHIAYI_VIEW.east]
+        ],
+        {
+            padding: [30, 30],
+
+            maxZoom: MAP_ZOOM
+        }
+    );
+
+
+    /*
+       Zoom buttons.
+    */
+
+    L.control.zoom(
+        {
+            position: 'bottomright'
+        }
+    ).addTo(map);
+
+
+    /*
+       OpenStreetMap basemap.
+    */
 
     L.tileLayer(
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { attribution: '© OpenStreetMap' }
+        {
+            attribution: '© OpenStreetMap',
+
+            /*
+               Keep world wrapping off.
+            */
+            noWrap: true
+        }
     ).addTo(map);
 
-    // ── CHIAYI ONLY VIEW ──
-    // Chiayi area remains visible while zooming out.
-    // The surrounding world map is covered.
 
-    const CHIAYI_VIEW = {
-        north: 23.57,
-        south: 23.40,
-        west: 120.36,
-        east: 120.55
-    };
+    /* ══════════════════════════════════════════
+       CHIAYI OUTSIDE-AREA MASK
+       ══════════════════════════════════════════ */
 
-    // Create a pane above the basemap but below markers.
-    map.createPane('chiayiMaskPane');
-    map.getPane('chiayiMaskPane').style.zIndex = 350;
+    /*
+       Create a pane ABOVE the basemap
+       but BELOW the markers.
+
+       zIndex:
+       basemap ≈ 200
+       mask = 350
+       markers ≈ 400+
+    */
+
+    map.createPane(
+        'chiayiMaskPane'
+    );
+
+    map.getPane(
+        'chiayiMaskPane'
+    ).style.zIndex = 350;
+
 
     const maskStyle = {
+
         stroke: false,
+
         fill: true,
+
+        /*
+           Same color as app background.
+        */
+
         fillColor: '#F0F9FF',
+
         fillOpacity: 1,
+
         interactive: false,
+
         pane: 'chiayiMaskPane'
+
     };
 
-    // TOP
+
+    /*
+       TOP
+       Everything north of Chiayi.
+    */
+
     L.rectangle(
-        [[CHIAYI_VIEW.north, -180], [90, 180]],
+
+        [
+            [CHIAYI_VIEW.north, -180],
+            [90, 180]
+        ],
+
         maskStyle
+
     ).addTo(map);
 
-    // BOTTOM
+
+    /*
+       BOTTOM
+       Everything south of Chiayi.
+    */
+
     L.rectangle(
-        [[-90, -180], [CHIAYI_VIEW.south, 180]],
+
+        [
+            [-90, -180],
+            [CHIAYI_VIEW.south, 180]
+        ],
+
         maskStyle
+
     ).addTo(map);
 
-    // LEFT
+
+    /*
+       LEFT
+       Everything west of Chiayi.
+    */
+
     L.rectangle(
-        [[CHIAYI_VIEW.south, -180], [CHIAYI_VIEW.north, CHIAYI_VIEW.west]],
+
+        [
+            [CHIAYI_VIEW.south, -180],
+            [CHIAYI_VIEW.north, CHIAYI_VIEW.west]
+        ],
+
         maskStyle
+
     ).addTo(map);
 
-    // RIGHT
+
+    /*
+       RIGHT
+       Everything east of Chiayi.
+    */
+
     L.rectangle(
-        [[CHIAYI_VIEW.south, CHIAYI_VIEW.east], [CHIAYI_VIEW.north, 180]],
+
+        [
+            [CHIAYI_VIEW.south, CHIAYI_VIEW.east],
+            [CHIAYI_VIEW.north, 180]
+        ],
+
         maskStyle
+
     ).addTo(map);
 
-    map.on('click', () => {
-        if (window.innerWidth < 768) closeDrawer();
-    });
+
+    /* ══════════════════════════════════════════
+       MAP EVENTS
+       ══════════════════════════════════════════ */
+
+    map.on(
+        'click',
+        function() {
+
+            if (window.innerWidth < 768) {
+
+                closeDrawer();
+
+            }
+
+        }
+    );
+
 
     drawMarkers();
 
-    // Re-render only after the map settles.
-    map.on('moveend zoomend', scheduleMarkerRedraw);
+
+    map.on(
+        'moveend zoomend',
+        scheduleMarkerRedraw
+    );
+
+
+    /* ══════════════════════════════════════════
+       GPS
+       ══════════════════════════════════════════ */
 
     if ('geolocation' in navigator) {
+
         navigator.geolocation.getCurrentPosition(
+
             onLocFound,
+
             onLocError,
+
             {
                 enableHighAccuracy: true,
+
                 timeout: 10000
             }
+
         );
+
     } else {
-        setGpsBar('無法使用定位功能', true);
+
+        setGpsBar(
+            '無法使用定位功能',
+            true
+        );
+
     }
+
 }
 
-/* ── LOW-ZOOM AGGREGATION ──
-   If thousands of real points are inside the viewport, do not create thousands
-   of Leaflet marker objects. Instead, create a small number of spatial cells.
-   The cell number is exact; zooming in switches back to real locations.
-*/
+
+/* ══════════════════════════════════════════════
+   MARKER REDRAW TIMER
+   ══════════════════════════════════════════════ */
+
+function scheduleMarkerRedraw() {
+
+    clearTimeout(renderTimer);
+
+    renderTimer =
+        setTimeout(
+            drawMarkers,
+            120
+        );
+
+}
+
+
+/* ══════════════════════════════════════════════
+   GPS LOCATION
+   ══════════════════════════════════════════════ */
+
+function onLocFound(pos) {
+
+    const lat =
+        pos.coords.latitude;
+
+    const lng =
+        pos.coords.longitude;
+
+    userLocation =
+        L.latLng(
+            lat,
+            lng
+        );
+
+
+    L.circleMarker(
+        userLocation,
+        {
+            radius: 10,
+
+            fillColor: "#10B981",
+
+            color: "#fff",
+
+            weight: 3,
+
+            fillOpacity: 1
+        }
+    )
+    .addTo(map)
+    .bindTooltip(
+        "你在這裡",
+        {
+            permanent: false,
+            direction: "top"
+        }
+    );
+
+
+    setGpsBar(
+        '📍 定位完成',
+        true
+    );
+
+
+    const filtered =
+        getFiltered();
+
+
+    if (
+        filtered.length > 0 &&
+        typeof turf !== 'undefined'
+    ) {
+
+        nearestFeature =
+            turf.nearestPoint(
+                turf.point(
+                    [lng, lat]
+                ),
+                {
+                    type: 'FeatureCollection',
+                    features: filtered
+                }
+            );
+
+    }
+
+
+    /*
+       Weather API
+    */
+
+    fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`
+    )
+
+    .then(r => r.json())
+
+    .then(d => {
+
+        if (
+            !d.current_weather
+        ) return;
+
+        document.getElementById(
+            'w-icon'
+        ).textContent =
+            weatherEmoji(
+                d.current_weather.weathercode
+            );
+
+
+        document.getElementById(
+            'w-temp'
+        ).textContent =
+            Math.round(
+                d.current_weather.temperature
+            ) + '°';
+
+
+        document.getElementById(
+            'w-temp'
+        ).style.display = '';
+
+
+        document.getElementById(
+            'w-loading'
+        ).style.display = 'none';
+
+    })
+
+    .catch(() => {
+
+        document.getElementById(
+            'w-loading'
+        ).textContent = '--';
+
+    });
+
+}
+
+
+function onLocError() {
+
+    setGpsBar(
+        '⚠️ 定位失敗，請允許位置存取',
+        true
+    );
+
+}
+
+
+/* ══════════════════════════════════════════════
+   FILTER
+   ══════════════════════════════════════════════ */
+
+function getFiltered() {
+
+    if (
+        !PLACES ||
+        !Array.isArray(PLACES.features)
+    ) {
+
+        return [];
+
+    }
+
+
+    return PLACES.features.filter(
+
+        f =>
+
+            (f.properties.status || 'active')
+            !== 'inactive'
+
+            &&
+
+            (
+                currentCat === 'all'
+
+                ||
+
+                f.properties.cat === currentCat
+            )
+
+    );
+
+}
+
+
+/* ══════════════════════════════════════════════
+   VISIBLE FEATURES
+   ══════════════════════════════════════════════ */
+
+function getVisibleFeatures(features) {
+
+    if (!map) return [];
+
+    const b =
+        map.getBounds().pad(0.20);
+
+
+    return features.filter(f => {
+
+        if (
+            !f.geometry ||
+            !Array.isArray(
+                f.geometry.coordinates
+            )
+        ) {
+
+            return false;
+
+        }
+
+
+        const [
+            lng,
+            lat
+        ] =
+            f.geometry.coordinates;
+
+
+        return b.contains(
+            [lat, lng]
+        );
+
+    });
+
+}
+
+
+/* ══════════════════════════════════════════════
+   LOW-ZOOM AGGREGATION
+   ══════════════════════════════════════════════ */
+
 function buildAggregates(features) {
-    const b = map.getBounds();
-    const latStep = Math.max((b.getNorth() - b.getSouth()) / 40, 0.00001);
-    const lngStep = Math.max((b.getEast() - b.getWest()) / 40, 0.00001);
-    const bins = new Map();
+
+    const b =
+        map.getBounds();
+
+
+    const latStep =
+        Math.max(
+            (b.getNorth() - b.getSouth()) / 40,
+            0.00001
+        );
+
+
+    const lngStep =
+        Math.max(
+            (b.getEast() - b.getWest()) / 40,
+            0.00001
+        );
+
+
+    const bins =
+        new Map();
+
 
     features.forEach(f => {
-        const [lng, lat] = f.geometry.coordinates;
-        const x = Math.floor((lng - b.getWest()) / lngStep);
-        const y = Math.floor((lat - b.getSouth()) / latStep);
-        const key = x + ':' + y;
-        if (!bins.has(key)) bins.set(key, { count: 0, lngSum: 0, latSum: 0, sample: f });
-        const bin = bins.get(key);
+
+        const [
+            lng,
+            lat
+        ] =
+            f.geometry.coordinates;
+
+
+        const x =
+            Math.floor(
+                (lng - b.getWest())
+                / lngStep
+            );
+
+
+        const y =
+            Math.floor(
+                (lat - b.getSouth())
+                / latStep
+            );
+
+
+        const key =
+            x + ':' + y;
+
+
+        if (!bins.has(key)) {
+
+            bins.set(
+                key,
+                {
+                    count: 0,
+                    lngSum: 0,
+                    latSum: 0,
+                    sample: f
+                }
+            );
+
+        }
+
+
+        const bin =
+            bins.get(key);
+
+
         bin.count++;
+
         bin.lngSum += lng;
+
         bin.latSum += lat;
+
     });
 
-    return [...bins.values()].map(bin => ({
-        lat: bin.latSum / bin.count,
-        lng: bin.lngSum / bin.count,
-        count: bin.count,
-        sample: bin.sample
+
+    return [
+        ...bins.values()
+    ].map(bin => ({
+
+        lat:
+            bin.latSum /
+            bin.count,
+
+        lng:
+            bin.lngSum /
+            bin.count,
+
+        count:
+            bin.count,
+
+        sample:
+            bin.sample
+
     }));
+
 }
 
-function aggregateIcon(count, color) {
-    const size = count < 10 ? 44 : count < 100 ? 54 : 64;
-    const font = count < 100 ? 14 : 12;
+
+/* ══════════════════════════════════════════════
+   AGGREGATE ICON
+   ══════════════════════════════════════════════ */
+
+function aggregateIcon(
+    count,
+    color
+) {
+
+    const size =
+        count < 10
+            ? 44
+            : count < 100
+                ? 54
+                : 64;
+
+
+    const font =
+        count < 100
+            ? 14
+            : 12;
+
+
     return L.divIcon({
+
         className: '',
-        html: `<div class="ccluster-outer" style="width:${size}px;height:${size}px;background:${color}33;">
-                   <div class="ccluster-inner" style="width:${size-10}px;height:${size-10}px;background:${color};font-size:${font}px;">${count}</div>
-               </div>`,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2]
+
+        html: `
+
+            <div
+                class="ccluster-outer"
+                style="
+                    width:${size}px;
+                    height:${size}px;
+                    background:${color}33;
+                "
+            >
+
+                <div
+                    class="ccluster-inner"
+                    style="
+                        width:${size - 10}px;
+                        height:${size - 10}px;
+                        background:${color};
+                        font-size:${font}px;
+                    "
+                >
+
+                    ${count}
+
+                </div>
+
+            </div>
+
+        `,
+
+        iconSize:
+            [size, size],
+
+        iconAnchor:
+            [
+                size / 2,
+                size / 2
+            ]
+
     });
+
 }
 
-/* ── DRAW MARKERS ── */
-function drawMarkers() {
-    if (!map || !PLACES) return;
 
-    if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
+/* ══════════════════════════════════════════════
+   DRAW MARKERS
+   ══════════════════════════════════════════════ */
+
+function drawMarkers() {
+
+    if (
+        !map ||
+        !PLACES
+    ) {
+
+        return;
+
+    }
+
+
+    if (clusterGroup) {
+
+        map.removeLayer(
+            clusterGroup
+        );
+
+        clusterGroup = null;
+
+    }
+
+
     nearestFeature = null;
 
-    const filtered = getFiltered();
 
-    if (userLocation && filtered.length > 0) {
-        nearestFeature = turf.nearestPoint(
-            turf.point([userLocation.lng, userLocation.lat]),
-            { type: 'FeatureCollection', features: filtered }
-        );
+    const filtered =
+        getFiltered();
+
+
+    /*
+       Find nearest place.
+    */
+
+    if (
+        userLocation &&
+        filtered.length > 0 &&
+        typeof turf !== 'undefined'
+    ) {
+
+        nearestFeature =
+            turf.nearestPoint(
+
+                turf.point(
+                    [
+                        userLocation.lng,
+                        userLocation.lat
+                    ]
+                ),
+
+                {
+                    type: 'FeatureCollection',
+                    features: filtered
+                }
+
+            );
+
     }
 
-    const visible = getVisibleFeatures(filtered);
 
-    const clusterColor = (currentCat !== 'all' && CATEGORY_CONFIG[currentCat])
-        ? CATEGORY_CONFIG[currentCat].color
-        : '#0369A1';
+    const visible =
+        getVisibleFeatures(
+            filtered
+        );
 
-    // At high density, spatial aggregation avoids creating tens of thousands
-    // of DOM-backed map markers.
-    if (visible.length > MAX_DETAIL_MARKERS) {
-        const aggregates = buildAggregates(visible);
-        clusterGroup = L.layerGroup();
+
+    /*
+       Cluster color.
+    */
+
+    const clusterColor =
+
+        (
+            currentCat !== 'all'
+            &&
+            CATEGORY_CONFIG[currentCat]
+        )
+
+        ?
+
+        CATEGORY_CONFIG[currentCat].color
+
+        :
+
+        '#0369A1';
+
+
+    /*
+       If there are extremely many markers,
+       use spatial aggregation.
+    */
+
+    if (
+        visible.length >
+        MAX_DETAIL_MARKERS
+    ) {
+
+        const aggregates =
+            buildAggregates(
+                visible
+            );
+
+
+        clusterGroup =
+            L.layerGroup();
+
 
         aggregates.forEach(a => {
-            const marker = L.marker([a.lat, a.lng], { icon: aggregateIcon(a.count, clusterColor) });
-            marker.on('click', () => {
-                map.flyTo([a.lat, a.lng], Math.min(map.getZoom() + 2, 18), { animate: true, duration: 0.5 });
-            });
-            clusterGroup.addLayer(marker);
+
+            const marker =
+                L.marker(
+
+                    [
+                        a.lat,
+                        a.lng
+                    ],
+
+                    {
+                        icon:
+                            aggregateIcon(
+                                a.count,
+                                clusterColor
+                            )
+                    }
+
+                );
+
+
+            marker.on(
+                'click',
+                () => {
+
+                    map.flyTo(
+
+                        [
+                            a.lat,
+                            a.lng
+                        ],
+
+                        Math.min(
+                            map.getZoom() + 2,
+                            18
+                        ),
+
+                        {
+                            animate: true,
+                            duration: 0.5
+                        }
+
+                    );
+
+                }
+            );
+
+
+            clusterGroup.addLayer(
+                marker
+            );
+
         });
-        map.addLayer(clusterGroup);
+
+
+        map.addLayer(
+            clusterGroup
+        );
+
+
         return;
+
     }
 
-    clusterGroup = L.markerClusterGroup({
-        maxClusterRadius: 60,
-        showCoverageOnHover: false,
-        iconCreateFunction: function(cluster) {
-            const count = cluster.getChildCount();
-            const outerSize = count < 10 ? 44 : count < 50 ? 54 : 64;
-            const innerSize = outerSize - 10;
-            const fontSize  = count < 100 ? 14 : 12;
-            const outerBg = clusterColor + '33';
-            return L.divIcon({
-                className: '',
-                html: `<div class="ccluster-outer" style="width:${outerSize}px;height:${outerSize}px;background:${outerBg};">
-                           <div class="ccluster-inner" style="width:${innerSize}px;height:${innerSize}px;background:${clusterColor};font-size:${fontSize}px;">
-                               ${count}
-                           </div>
-                       </div>`,
-                iconSize: L.point(outerSize, outerSize),
-                iconAnchor: L.point(outerSize / 2, outerSize / 2)
-            });
-        }
-    });
+
+    /*
+       Normal marker clustering.
+    */
+
+    clusterGroup =
+        L.markerClusterGroup({
+
+            maxClusterRadius: 60,
+
+            showCoverageOnHover: false,
+
+            iconCreateFunction:
+                function(cluster) {
+
+                    const count =
+                        cluster.getChildCount();
+
+
+                    const outerSize =
+
+                        count < 10
+                            ? 44
+                            : count < 50
+                                ? 54
+                                : 64;
+
+
+                    const innerSize =
+                        outerSize - 10;
+
+
+                    const fontSize =
+
+                        count < 100
+                            ? 14
+                            : 12;
+
+
+                    const outerBg =
+                        clusterColor + '33';
+
+
+                    return L.divIcon({
+
+                        className: '',
+
+                        html: `
+
+                            <div
+                                class="ccluster-outer"
+                                style="
+                                    width:${outerSize}px;
+                                    height:${outerSize}px;
+                                    background:${outerBg};
+                                "
+                            >
+
+                                <div
+                                    class="ccluster-inner"
+                                    style="
+                                        width:${innerSize}px;
+                                        height:${innerSize}px;
+                                        background:${clusterColor};
+                                        font-size:${fontSize}px;
+                                    "
+                                >
+
+                                    ${count}
+
+                                </div>
+
+                            </div>
+
+                        `,
+
+                        iconSize:
+                            L.point(
+                                outerSize,
+                                outerSize
+                            ),
+
+                        iconAnchor:
+                            L.point(
+                                outerSize / 2,
+                                outerSize / 2
+                            )
+
+                    });
+
+                }
+
+        });
+
 
     visible.forEach(f => {
-        const [lng, lat] = f.geometry.coordinates;
-        const p = f.properties;
-        const isNearest = nearestFeature &&
-            f.geometry.coordinates[0] === nearestFeature.geometry.coordinates[0] &&
-            f.geometry.coordinates[1] === nearestFeature.geometry.coordinates[1];
-        const catClass = isNearest ? 'nearest' : (CATEGORY_CONFIG[p.cat]?.markerClass || p.cat);
 
-        const icon = L.divIcon({
-            className: '',
-            html: `<div class="cmarker ${catClass}">
-                       <div class="cmarker-pin"><div class="cmarker-pin-inner">${p.icon}</div></div>
-                       <div class="cmarker-label">${p.name}</div>
-                   </div>`,
-            iconSize: [44, 66], iconAnchor: [22, 44], popupAnchor: [0, -46]
-        });
+        if (
+            !f.geometry ||
+            !f.properties
+        ) {
 
-        const marker = L.marker([lat, lng], { icon });
-        marker.on('click', () => openDrawer(f, isNearest));
-        clusterGroup.addLayer(marker);
+            return;
+
+        }
+
+
+        const [
+            lng,
+            lat
+        ] =
+            f.geometry.coordinates;
+
+
+        const p =
+            f.properties;
+
+
+        const isNearest =
+
+            nearestFeature &&
+
+            f.geometry.coordinates[0]
+            ===
+            nearestFeature.geometry.coordinates[0]
+
+            &&
+
+            f.geometry.coordinates[1]
+            ===
+            nearestFeature.geometry.coordinates[1];
+
+
+        const catClass =
+
+            isNearest
+
+            ?
+
+            'nearest'
+
+            :
+
+            (
+                CATEGORY_CONFIG[p.cat]
+                ?.markerClass
+                ||
+                p.cat
+                ||
+                'culture'
+            );
+
+
+        const icon =
+            L.divIcon({
+
+                className: '',
+
+                html: `
+
+                    <div
+                        class="cmarker ${catClass}"
+                    >
+
+                        <div class="cmarker-pin">
+
+                            <div class="cmarker-pin-inner">
+
+                                ${p.icon || '📍'}
+
+                            </div>
+
+                        </div>
+
+                        <div class="cmarker-label">
+
+                            ${escapeHtml(
+                                p.name || ''
+                            )}
+
+                        </div>
+
+                    </div>
+
+                `,
+
+                iconSize:
+                    [44, 66],
+
+                iconAnchor:
+                    [22, 44],
+
+                popupAnchor:
+                    [0, -46]
+
+            });
+
+
+        const marker =
+            L.marker(
+                [lat, lng],
+                { icon }
+            );
+
+
+        marker.on(
+            'click',
+            () =>
+                openDrawer(
+                    f,
+                    isNearest
+                )
+        );
+
+
+        clusterGroup.addLayer(
+            marker
+        );
+
     });
 
-    map.addLayer(clusterGroup);
+
+    map.addLayer(
+        clusterGroup
+    );
+
 }
 
-/* ── DATA MANAGER SYNC ── */
-window.addEventListener('storage', e => {
-    if (e.key !== STORAGE_KEY || !e.newValue) return;
-    try {
-        PLACES = normalizePlaces(JSON.parse(e.newValue));
-        drawMarkers();
-        showToast('✅ 地點資料已更新');
-    } catch (err) {
-        console.warn('Could not sync location data:', err);
-    }
-});
+
+/* ══════════════════════════════════════════════
+   HTML ESCAPE
+   ══════════════════════════════════════════════ */
+
+function escapeHtml(value) {
+
+    return String(
+        value ?? ''
+    ).replace(
+        /[&<>"']/g,
+        function(m) {
+
+            return {
+
+                '&': '&amp;',
+
+                '<': '&lt;',
+
+                '>': '&gt;',
+
+                '"': '&quot;',
+
+                "'": '&#039;'
+
+            }[m];
+
+        }
+    );
+
+}
 
 
-/* ── FILTER ── */
-function filterCat(el, cat) {
-    currentCat = cat;
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
+/* ══════════════════════════════════════════════
+   CATEGORY FILTER
+   ══════════════════════════════════════════════ */
+
+function filterCat(
+    el,
+    cat
+) {
+
+    currentCat =
+        cat;
+
+
+    document
+        .querySelectorAll('.chip')
+        .forEach(
+            c =>
+                c.classList.remove(
+                    'active'
+                )
+        );
+
+
+    el.classList.add(
+        'active'
+    );
+
+
     drawMarkers();
+
 }
 
-/* ── DRAWER ── */
-function openDrawer(feature, isNearest) {
-    const p = feature.properties;
-    const [lng, lat] = feature.geometry.coordinates;
-    const cfg = CATEGORY_CONFIG[p.cat] || { drawerTagClass: p.cat, drawerTagLabel: p.cat };
+
+/* ══════════════════════════════════════════════
+   DRAWER
+   ══════════════════════════════════════════════ */
+
+function openDrawer(
+    feature,
+    isNearest
+) {
+
+    const p =
+        feature.properties;
+
+
+    const [
+        lng,
+        lat
+    ] =
+        feature.geometry.coordinates;
+
+
+    const cfg =
+
+        CATEGORY_CONFIG[p.cat]
+
+        ||
+
+        {
+            drawerTagClass:
+                p.cat || 'culture',
+
+            drawerTagLabel:
+                p.cat || ''
+        };
+
 
     let tags = '';
-    if (isNearest) tags += '<span class="drawer-tag nearest">📍 距你最近</span> ';
-    tags += `<span class="drawer-tag ${cfg.drawerTagClass}">${cfg.drawerTagLabel}</span>`;
 
-    const gmapsUrl  = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
-    const gmapsView = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 
-    document.getElementById('drawer-content').innerHTML = `
-        <div style="margin-bottom:8px">${tags}</div>
-        <div class="drawer-name">${p.icon} ${p.name}</div>
-        <div class="drawer-address"><span>📍</span><span>${p.address}</span></div>
-        ${p.description ? `<div class="drawer-description" style="margin:10px 0;padding:10px 12px;background:#f5f7fa;border-radius:10px;line-height:1.5;"><strong>Description</strong><br>${p.description}</div>` : ''}
-        <div class="drawer-hours">
-            <div class="drawer-hours-icon">🕐</div>
-            <div>
-                <div class="drawer-hours-label">開放時間</div>
-                <div class="drawer-hours-text">${p.hours.replace(/\n/g, '<br>')}</div>
-            </div>
-        </div>
-        <div class="drawer-actions">
-            <a href="${gmapsUrl}" target="_blank" class="btn-nav btn-gmaps">Google 地圖導航</a>
-            <button class="btn-nav btn-share" onclick="sharePlace('${p.name}','${p.address}','${gmapsView}')">📤 分享</button>
-            <button class="btn-nav btn-copy"  onclick="copyAddress('${p.address}')">📋 複製地址</button>
-        </div>
+    if (isNearest) {
+
+        tags +=
+            '<span class="drawer-tag nearest">📍 距你最近</span> ';
+
+    }
+
+
+    tags += `
+
+        <span
+            class="drawer-tag ${cfg.drawerTagClass}"
+        >
+
+            ${cfg.drawerTagLabel}
+
+        </span>
+
     `;
-    document.getElementById('drawer').classList.add('open');
+
+
+    const gmapsUrl =
+
+        `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+
+
+    const gmapsView =
+
+        `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+
+    const safeName =
+        escapeHtml(
+            p.name || ''
+        );
+
+
+    const safeAddress =
+        escapeHtml(
+            p.address || ''
+        );
+
+
+    const safeDescription =
+        escapeHtml(
+            p.description || ''
+        );
+
+
+    const safeHours =
+        escapeHtml(
+            p.hours || ''
+        )
+        .replace(
+            /\n/g,
+            '<br>'
+        );
+
+
+    document.getElementById(
+        'drawer-content'
+    ).innerHTML = `
+
+        <div style="margin-bottom:8px">
+            ${tags}
+        </div>
+
+
+        <div class="drawer-name">
+            ${p.icon || '📍'} ${safeName}
+        </div>
+
+
+        <div class="drawer-address">
+
+            <span>📍</span>
+
+            <span>
+                ${safeAddress}
+            </span>
+
+        </div>
+
+
+        ${
+            p.description
+            ?
+
+            `
+                <div
+                    class="drawer-description"
+                    style="
+                        margin:10px 0;
+                        padding:10px 12px;
+                        background:#f5f7fa;
+                        border-radius:10px;
+                        line-height:1.5;
+                    "
+                >
+
+                    <strong>
+                        Description
+                    </strong>
+
+                    <br>
+
+                    ${safeDescription}
+
+                </div>
+            `
+
+            :
+
+            ''
+        }
+
+
+        <div class="drawer-hours">
+
+            <div class="drawer-hours-icon">
+                🕐
+            </div>
+
+            <div>
+
+                <div class="drawer-hours-label">
+                    開放時間
+                </div>
+
+                <div class="drawer-hours-text">
+                    ${safeHours}
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="drawer-actions">
+
+            <a
+                href="${gmapsUrl}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn-nav btn-gmaps"
+            >
+                Google 地圖導航
+            </a>
+
+
+            <button
+                class="btn-nav btn-share"
+                onclick="sharePlace(
+                    ${JSON.stringify(p.name || '')},
+                    ${JSON.stringify(p.address || '')},
+                    ${JSON.stringify(gmapsView)}
+                )"
+            >
+                📤 分享
+            </button>
+
+
+            <button
+                class="btn-nav btn-copy"
+                onclick="copyAddress(
+                    ${JSON.stringify(p.address || '')}
+                )"
+            >
+                📋 複製地址
+            </button>
+
+        </div>
+
+    `;
+
+
+    document
+        .getElementById('drawer')
+        .classList.add('open');
+
 }
 
-function closeDrawer() { document.getElementById('drawer').classList.remove('open'); }
 
-window.sharePlace = function(name, address, url) {
-    if (navigator.share) navigator.share({ title: name, text: `${name}\n${address}`, url });
-    else navigator.clipboard.writeText(`${name}\n${address}\n${url}`).then(() => showToast('已複製分享連結'));
-};
-window.copyAddress = function(addr) {
-    navigator.clipboard.writeText(addr).then(() => showToast('✅ 地址已複製'));
-};
+function closeDrawer() {
 
-function openMenu()  { document.getElementById('menu-panel').classList.add('open'); }
-function closeMenu() { document.getElementById('menu-panel').classList.remove('open'); }
+    document
+        .getElementById('drawer')
+        .classList.remove('open');
 
-function setGpsBar(msg, hide) {
-    const bar = document.getElementById('gps-bar');
-    bar.textContent = msg;
-    if (hide) setTimeout(() => bar.classList.add('hidden'), 2500);
 }
+
+
+/* ══════════════════════════════════════════════
+   SHARE / COPY
+   ══════════════════════════════════════════════ */
+
+window.sharePlace =
+    function(
+        name,
+        address,
+        url
+    ) {
+
+        if (
+            navigator.share
+        ) {
+
+            navigator.share({
+
+                title: name,
+
+                text:
+                    `${name}\n${address}`,
+
+                url
+
+            });
+
+        } else {
+
+            navigator.clipboard
+                .writeText(
+                    `${name}\n${address}\n${url}`
+                )
+                .then(
+                    () =>
+                        showToast(
+                            '已複製分享連結'
+                        )
+                );
+
+        }
+
+    };
+
+
+window.copyAddress =
+    function(addr) {
+
+        navigator.clipboard
+            .writeText(addr)
+            .then(
+                () =>
+                    showToast(
+                        '✅ 地址已複製'
+                    )
+            );
+
+    };
+
+
+/* ══════════════════════════════════════════════
+   MENU
+   ══════════════════════════════════════════════ */
+
+function openMenu() {
+
+    document
+        .getElementById(
+            'menu-panel'
+        )
+        .classList.add('open');
+
+}
+
+
+function closeMenu() {
+
+    document
+        .getElementById(
+            'menu-panel'
+        )
+        .classList.remove('open');
+
+}
+
+
+/* ══════════════════════════════════════════════
+   GPS BAR
+   ══════════════════════════════════════════════ */
+
+function setGpsBar(
+    msg,
+    hide
+) {
+
+    const bar =
+        document.getElementById(
+            'gps-bar'
+        );
+
+
+    bar.textContent =
+        msg;
+
+
+    if (hide) {
+
+        setTimeout(
+            () =>
+                bar.classList.add(
+                    'hidden'
+                ),
+            2500
+        );
+
+    }
+
+}
+
+
+/* ══════════════════════════════════════════════
+   MY LOCATION
+   ══════════════════════════════════════════════ */
 
 function goToUser() {
-    if (userLocation) map.flyTo(userLocation, 15, { animate: true, duration: 0.8 });
-    else showToast('尚未取得位置，請允許定位存取');
+
+    if (userLocation) {
+
+        map.flyTo(
+            userLocation,
+            15,
+            {
+                animate: true,
+                duration: 0.8
+            }
+        );
+
+    } else {
+
+        showToast(
+            '尚未取得位置，請允許定位存取'
+        );
+
+    }
+
 }
+
+
+/* ══════════════════════════════════════════════
+   FIND NEAREST
+   ══════════════════════════════════════════════ */
 
 function focusNearest() {
-    if (!userLocation) { showToast('請先允許定位以找到最近場所'); return; }
-    if (!nearestFeature) { showToast('目前分類無資料'); return; }
-    const [lng, lat] = nearestFeature.geometry.coordinates;
-    map.flyTo([lat, lng], 17, { animate: true, duration: 0.8 });
+
+    if (!userLocation) {
+
+        showToast(
+            '請先允許定位以找到最近場所'
+        );
+
+        return;
+
+    }
+
+
+    if (!nearestFeature) {
+
+        showToast(
+            '目前分類無資料'
+        );
+
+        return;
+
+    }
+
+
+    const [
+        lng,
+        lat
+    ] =
+        nearestFeature.geometry.coordinates;
+
+
+    map.flyTo(
+        [lat, lng],
+        17,
+        {
+            animate: true,
+            duration: 0.8
+        }
+    );
+
 }
+
+
+/* ══════════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════════ */
 
 function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
+
+    const t =
+        document.getElementById(
+            'toast'
+        );
+
+
+    t.textContent =
+        msg;
+
+
+    t.classList.add(
+        'show'
+    );
+
+
+    setTimeout(
+        () =>
+            t.classList.remove(
+                'show'
+            ),
+        2500
+    );
+
 }
 
+
+/* ══════════════════════════════════════════════
+   WEATHER ICON
+   ══════════════════════════════════════════════ */
+
 function weatherEmoji(code) {
-    if (code === 0)  return "☀️";
-    if (code <= 3)   return "⛅";
-    if (code <= 48)  return "🌫️";
-    if (code <= 67)  return "🌧️";
-    if (code <= 82)  return "🌦️";
+
+    if (code === 0)
+        return "☀️";
+
+    if (code <= 3)
+        return "⛅";
+
+    if (code <= 48)
+        return "🌫️";
+
+    if (code <= 67)
+        return "🌧️";
+
+    if (code <= 82)
+        return "🌦️";
+
     return "⛈️";
+
 }
+
 </script>
+
 </body>
 </html>
